@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 /**
  * API route for fetching run context (internal service-to-service)
  * GET /api/internal/run-context?userAgentId=...
