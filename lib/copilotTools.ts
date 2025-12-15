@@ -40,17 +40,20 @@ async function logCopilotAction(options: {
 }) {
   const { context, toolName, payload, result, status, errorMessage } = options;
 
-  await prisma.copilotActionLog.create({
-    data: {
+  // Tijdelijk: log alleen naar console totdat CopilotActionLog-model beschikbaar is
+  try {
+    // Minimale, veilige logging zonder Prisma-tabel afhankelijkheid
+    console.info("[COPILOT][ACTION]", {
       userId: context.userId,
       workspaceId: context.workspaceId,
       toolName,
-      payloadJson: JSON.stringify(payload ?? {}),
-      resultJson: result !== null ? JSON.stringify(result) : null,
       status,
-      errorMessage: errorMessage ?? null,
-    },
-  });
+      errorMessage,
+    });
+    // Hier kan later een echte Prisma-logtabel aan worden gekoppeld.
+  } catch (e) {
+    console.error("[COPILOT][ACTION][LOGGING_ERROR]", e);
+  }
 }
 
 export const copilotTools: Record<string, ToolHandler> = {
