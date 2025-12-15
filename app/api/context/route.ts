@@ -46,6 +46,10 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  let debugUserId: string | null = null;
+  let debugWorkspaceId: string | null = null;
+  let debugBody: any = null;
+
   try {
     const session = await getServerSession(authOptions);
 
@@ -53,11 +57,15 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
     }
 
+    debugUserId = session.user.id;
+
     const body = await request.json();
+    debugBody = body;
     const { profileJson, goalsJson, preferencesJson } = body ?? {};
 
     // Bepaal (of maak) huidige workspace op basis van ingelogde user
     const workspace = await getOrCreateWorkspace(session.user.id);
+    debugWorkspaceId = workspace.id;
 
     const updateData: {
       profileJson?: string;
@@ -84,11 +92,17 @@ export async function PATCH(request: NextRequest) {
           : JSON.stringify(preferencesJson);
     }
 
-    const workspaceContext = await prisma.workspaceContext.update({
+    const workspaceContext = await prisma.workspaceContext.upsert({
       where: {
         workspaceId: workspace.id,
       },
-      data: updateData,
+      create: {
+        workspaceId: workspace.id,
+        profileJson: updateData.profileJson ?? "{}",
+        goalsJson: updateData.goalsJson ?? "{}",
+        preferencesJson: updateData.preferencesJson ?? "{}",
+      },
+      update: updateData,
     });
 
     return NextResponse.json({
@@ -101,8 +115,20 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error) {
     console.error("[CONTEXT][PATCH] Error:", error);
+    console.error("[CONTEXT][PATCH] Debug context:", {
+      userId: debugUserId,
+      workspaceId: debugWorkspaceId,
+      body: debugBody,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    const message = error instanceof Error ? error.message : "Onbekende fout";
+
     return NextResponse.json(
-      { error: "Er is iets misgegaan bij het updaten van de context" },
+      {
+        error: "Er is iets misgegaan bij het updaten van de context",
+        details: message,
+      },
       { status: 500 }
     );
   }
