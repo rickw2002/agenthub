@@ -175,15 +175,17 @@ export async function POST(request: NextRequest) {
       if (latestMetric) {
         try {
           const metricsData = JSON.parse(latestMetric.metricsJson) as MetricsData;
-          
+
           assistantReply = `Gebaseerd op je ${scope} data:\n\n`;
           assistantReply += `Laatste metingen: ${metricsData.impressions} impressions, ${metricsData.clicks} clicks, ${metricsData.conversions} conversions, €${metricsData.spend.toFixed(2)} spend.\n`;
-          
-          if (metricsData.ctr !== undefined) {
-            assistantReply += `CTR: ${(metricsData.ctr * 100).toFixed(2)}%.\n`;
+
+          const anyMetrics = metricsData as any;
+
+          if (anyMetrics.ctr !== undefined) {
+            assistantReply += `CTR: ${(anyMetrics.ctr * 100).toFixed(2)}%.\n`;
           }
-          if (metricsData.conversionRate !== undefined) {
-            assistantReply += `Conversiepercentage: ${(metricsData.conversionRate * 100).toFixed(2)}%.\n`;
+          if (anyMetrics.conversionRate !== undefined) {
+            assistantReply += `Conversiepercentage: ${(anyMetrics.conversionRate * 100).toFixed(2)}%.\n`;
           }
 
           if (insights.length > 0) {
