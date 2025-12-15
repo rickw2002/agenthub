@@ -142,8 +142,8 @@ export default function AgentDetail({ agent }: AgentDetailProps) {
                   <div className="prose max-w-none">
                     <p className="text-gray-700">
                       Deze agent kan eenvoudig worden geactiveerd via het configuratieformulier
-                      hiernaast. Vul de benodigde instellingen in en klik op "Agent activeren" om
-                      te beginnen.
+                      hiernaast. Vul de benodigde instellingen in en klik op &quot;Agent
+                      activeren&quot; om te beginnen.
                     </p>
                     <p className="text-gray-700 mt-4">
                       Na activatie wordt de agent automatisch geconfigureerd en kan deze direct
