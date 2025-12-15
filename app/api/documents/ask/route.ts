@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { buildDocumentRagPrompt, RagOutputMode } from "@/lib/documentRagPrompt";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 const DEFAULT_MODE: RagOutputMode = "qa";
 
@@ -41,22 +42,8 @@ export async function POST(request: NextRequest) {
         ? mode
         : DEFAULT_MODE;
 
-    // Bepaal workspace op basis van ingelogde user
-    const workspace = await prisma.workspace.findFirst({
-      where: {
-        ownerId: user.id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    if (!workspace) {
-      return NextResponse.json(
-        { error: "Geen workspace gevonden voor deze gebruiker" },
-        { status: 404 }
-      );
-    }
+    // Bepaal (of maak) workspace op basis van ingelogde user
+    const workspace = await getOrCreateWorkspace(user.id);
 
     let targetDocument: { id: string; title: string } | null = null;
 

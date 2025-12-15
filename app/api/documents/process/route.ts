@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 const DEFAULT_CHUNK_SIZE = 1000;
 
@@ -54,22 +55,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Bepaal workspace op basis van ingelogde user
-    const workspace = await prisma.workspace.findFirst({
-      where: {
-        ownerId: user.id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    if (!workspace) {
-      return NextResponse.json(
-        { error: "Geen workspace gevonden voor deze gebruiker" },
-        { status: 404 }
-      );
-    }
+    // Bepaal (of maak) workspace op basis van ingelogde user
+    const workspace = await getOrCreateWorkspace(user.id);
 
     // Haal document op en controleer workspace-isolatie
     const document = await prisma.document.findFirst({

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import DashboardContent from "@/components/DashboardContent";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -11,19 +12,8 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
-  // Zorg dat gebruikers zonder ingevulde context eerst onboarding doen
-  const workspace = await prisma.workspace.findFirst({
-    where: {
-      ownerId: session.user.id,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
-
-  if (!workspace) {
-    redirect("/onboarding");
-  }
+  // Zorg dat er altijd een workspace bestaat voor deze gebruiker
+  const workspace = await getOrCreateWorkspace(session.user.id);
 
   const workspaceContext = await prisma.workspaceContext.findUnique({
     where: {

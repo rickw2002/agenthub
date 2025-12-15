@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,22 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Bepaal workspace op basis van ingelogde user
-    const workspace = await prisma.workspace.findFirst({
-      where: {
-        ownerId: user.id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    if (!workspace) {
-      return NextResponse.json(
-        { error: "Geen workspace gevonden voor deze gebruiker" },
-        { status: 404 }
-      );
-    }
+    // Bepaal (of maak) workspace op basis van ingelogde user
+    const workspace = await getOrCreateWorkspace(user.id);
 
     // Voor nu slaan we het bestand niet fysiek op, maar bewaren we alleen metadata
     const fileUrl = `local-upload://${encodeURIComponent(file.name)}`;

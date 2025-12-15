@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 export async function GET() {
   try {
@@ -11,22 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
     }
 
-    // Bepaal huidige workspace op basis van ingelogde user
-    const workspace = await prisma.workspace.findFirst({
-      where: {
-        ownerId: session.user.id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    if (!workspace) {
-      return NextResponse.json(
-        { error: "Geen workspace gevonden voor deze gebruiker" },
-        { status: 404 }
-      );
-    }
+    // Bepaal (of maak) huidige workspace op basis van ingelogde user
+    const workspace = await getOrCreateWorkspace(session.user.id);
 
     const workspaceContext = await prisma.workspaceContext.findUnique({
       where: {
@@ -69,22 +56,8 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { profileJson, goalsJson, preferencesJson } = body ?? {};
 
-    // Bepaal huidige workspace op basis van ingelogde user
-    const workspace = await prisma.workspace.findFirst({
-      where: {
-        ownerId: session.user.id,
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    if (!workspace) {
-      return NextResponse.json(
-        { error: "Geen workspace gevonden voor deze gebruiker" },
-        { status: 404 }
-      );
-    }
+    // Bepaal (of maak) huidige workspace op basis van ingelogde user
+    const workspace = await getOrCreateWorkspace(session.user.id);
 
     const updateData: {
       profileJson?: string;
