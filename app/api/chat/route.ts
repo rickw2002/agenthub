@@ -9,6 +9,9 @@ interface MetricsData {
   clicks: number;
   conversions: number;
   spend: number;
+  ctr?: number;
+  cpc?: number;
+  conversionRate?: number;
 }
 
 /**
