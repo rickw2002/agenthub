@@ -1,0 +1,138 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  userAgents   UserAgent[]
+  connections  Connection[]
+  metricDailies MetricDaily[]
+  insights     Insight[]
+  chatMessages ChatMessage[]
+}
+
+model AgentTemplate {
+  id              String      @id @default(cuid())
+  name            String
+  slug            String      @unique
+  category        String      // bijv. "Sales", "Marketing", "Operations"
+  shortDescription String
+  longDescription String
+  type            String      // "agent" of "workflow"
+  difficulty      String      // bijv. "beginner", "advanced"
+  videoUrl        String?     // optioneel
+  configSchema    String      // JSON veld met configuratie schema
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  userAgents      UserAgent[]
+}
+
+model UserAgent {
+  id              String      @id @default(cuid())
+  userId          String
+  agentTemplateId String
+  name            String      // door de user gekozen naam
+  config          String      // JSON met ingevulde instellingen
+  status          String      // "active", "inactive", "incomplete"
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentTemplate   AgentTemplate @relation(fields: [agentTemplateId], references: [id], onDelete: Cascade)
+  runLogs         RunLog[]
+}
+
+model RunLog {
+  id          String     @id @default(cuid())
+  userAgentId String
+  status      String     // "queued" | "running" | "success" | "failed"
+  summary     String?
+  resultUrl   String?
+  error       String?
+  metadata    String?    // JSON as string
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userAgent   UserAgent  @relation(fields: [userAgentId], references: [id], onDelete: Cascade)
+}
+
+// Data Hub Models
+// Note: We store enum/JSON-like values as String for broad provider compatibility
+// Provider values: GOOGLE_ADS, META_ADS, LINKEDIN, WEBSITE, EMAIL, SUPPORT
+// ConnectionStatus values: CONNECTED, PENDING, ERROR, NOT_CONNECTED
+// InsightSeverity values: INFO, WARNING, CRITICAL
+// ChatScope values: MASTER, GOOGLE_ADS, META_ADS, LINKEDIN, WEBSITE, EMAIL, SUPPORT
+// ChatRole values: USER, ASSISTANT
+
+model Connection {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String   // GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
+  status    String   // CONNECTED | PENDING | ERROR | NOT_CONNECTED
+  authJson  String?  // JSON stored as string
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([userId, provider])
+}
+
+model MetricDaily {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String   // GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
+  date           DateTime
+  metricsJson    String   // JSON stored as string
+  dimensionsJson String?  // JSON stored as string
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider])
+  @@index([userId, provider, date])
+}
+
+model Insight {
+  id          String   @id @default(cuid())
+  userId      String
+  provider    String?  // GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT | null for master
+  title       String
+  summary     String
+  severity    String   // INFO | WARNING | CRITICAL
+  period      String?
+  dataRefJson String?  // JSON stored as string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, provider])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  scope     String   // MASTER | GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
+  role      String   // USER | ASSISTANT
+  content   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, scope])
+}
+
