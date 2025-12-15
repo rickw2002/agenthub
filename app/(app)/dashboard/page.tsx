@@ -11,6 +11,35 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
+  // Zorg dat gebruikers zonder ingevulde context eerst onboarding doen
+  const workspace = await prisma.workspace.findFirst({
+    where: {
+      ownerId: session.user.id,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  if (!workspace) {
+    redirect("/onboarding");
+  }
+
+  const workspaceContext = await prisma.workspaceContext.findUnique({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  if (
+    !workspaceContext ||
+    (workspaceContext.profileJson === "{}" &&
+      workspaceContext.goalsJson === "{}" &&
+      workspaceContext.preferencesJson === "{}")
+  ) {
+    redirect("/onboarding");
+  }
+
   // Haal UserAgents op voor deze gebruiker
   const userAgents = await prisma.userAgent.findMany({
     where: {

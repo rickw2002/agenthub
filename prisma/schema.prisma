@@ -12,17 +12,18 @@ datasource db {
 }
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  name         String
-  passwordHash String
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  userAgents   UserAgent[]
-  connections  Connection[]
+  id            String           @id @default(cuid())
+  email         String           @unique
+  name          String
+  passwordHash  String
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  userAgents    UserAgent[]
+  connections   Connection[]
   metricDailies MetricDaily[]
-  insights     Insight[]
-  chatMessages ChatMessage[]
+  insights      Insight[]
+  chatMessages  ChatMessage[]
+  workspaces    Workspace[]
 }
 
 model AgentTemplate {
@@ -135,4 +136,59 @@ model ChatMessage {
   @@index([userId])
   @@index([userId, scope])
 }
+
+model Workspace {
+  id        String            @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  owner     User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  context   WorkspaceContext?
+  documents Document[]
+  chunks    DocumentChunk[]
+
+  @@index([ownerId])
+}
+
+model WorkspaceContext {
+  id              String    @id @default(cuid())
+  workspaceId     String    @unique
+  profileJson     String    // JSON stored as string
+  goalsJson       String    // JSON stored as string
+  preferencesJson String    // JSON stored as string
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  workspaceId String
+  title       String
+  fileUrl     String
+  status      String   // bijv. "pending", "processing", "ready", "failed"
+  createdAt   DateTime @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  chunks      DocumentChunk[]
+
+  @@index([workspaceId])
+}
+
+model DocumentChunk {
+  id          String   @id @default(cuid())
+  documentId  String
+  workspaceId String
+  chunkIndex  Int
+  text        String
+  embedding   String?  // placeholder voor pgvector embedding
+  createdAt   DateTime @default(now())
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([documentId])
+  @@unique([documentId, chunkIndex])
+}
+
 

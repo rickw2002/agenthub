@@ -1,5 +1,40 @@
 # AgentHub - AI Agents & Workflows Platform
 
+## ✅ Live & Stable Baseline
+
+- De applicatie draait live op Render als Web Service: `https://agenthub-uni1.onrender.com`
+- Authenticatie met NextAuth (registreren + inloggen) werkt end-to-end met de Credentials provider bovenop Supabase Postgres via Prisma.
+- Prisma is succesvol gemigreerd naar Supabase; agent activatie (UserAgents) en agent runs (RunLogs) werken end-to-end.
+- Next.js dynamic rendering is expliciet geforceerd waar nodig met `export const dynamic = "force-dynamic"` (o.a. in `app/layout.tsx`, login page en relevante API-routes), zodat de app niet meer stukloopt op static export / prerendering.
+
+**Baseline checklist (getest en OK):**
+- [x] Registreren van een nieuwe gebruiker via `/auth/register` → user verschijnt in Supabase `User` tabel.
+- [x] Inloggen via `/auth/login` met dezelfde email/wachtwoord combinatie als bij registratie (NextAuth Credentials).
+- [x] Seed-data aanwezig: AgentTemplates zichtbaar op `/agents`.
+- [x] Agent activatie via `/agents/[slug]` → `UserAgent` record wordt aangemaakt.
+- [x] Agent run via `/api/agents/run` → `RunLog` wordt aangemaakt en statusupdates werken.
+- [x] Dashboard toont actieve agents en recente RunLogs voor ingelogde gebruiker.
+- [x] Render build loopt volledig door (geen blocking Next.js export errors).
+
+### Niet opnieuw aanpassen zonder goede reden
+
+De volgende infra/basis-onderdelen zijn stabiel en zouden alleen aangepast moeten worden als er een concreet probleem of nieuwe eis is:
+
+- **Prisma migratie setup**  
+  - Bestaande migraties in `prisma/migrations/` zijn in sync met Supabase.  
+  - Gebruik in ontwikkeling `npx prisma migrate dev --name <naam>` en in productie `npx prisma migrate deploy`.  
+  - Gebruik `prisma db push` alleen in tijdelijke, lege testomgevingen.
+
+- **Supabase connectie**  
+  - `DATABASE_URL` en `DIRECT_URL` wijzen naar dezelfde Supabase Postgres database (direct connection, poort 5432, `sslmode=require`).  
+  - Wachtwoorden en secrets staan uitsluitend in `.env` lokaal en in Render environment variables, niet hardcoded.
+
+- **Render build setup**  
+  - Build command: `npm install && npm run build`  
+  - Start command: `npm start`  
+  - Node runtime: 20+ (Render default werkt).  
+  - Dynamic rendering is afgedwongen met `dynamic = "force-dynamic"` voor routes/pages die headers, auth of sessies gebruiken.
+
 SaaS-platform voor MKB-bedrijven om AI agents en workflows te activeren en beheren.
 
 ## Technische Stack

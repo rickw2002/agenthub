@@ -34,13 +34,33 @@ export async function POST(request: NextRequest) {
     // Hash wachtwoord
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // Maak nieuwe user aan
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        passwordHash,
-      },
+    // Maak user + workspace + workspaceContext in een transactie aan
+    const { user } = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          email,
+          name,
+          passwordHash,
+        },
+      });
+
+      const workspace = await tx.workspace.create({
+        data: {
+          name: "Mijn workspace",
+          ownerId: user.id,
+        },
+      });
+
+      await tx.workspaceContext.create({
+        data: {
+          workspaceId: workspace.id,
+          profileJson: "{}",
+          goalsJson: "{}",
+          preferencesJson: "{}",
+        },
+      });
+
+      return { user };
     });
 
     return NextResponse.json(
