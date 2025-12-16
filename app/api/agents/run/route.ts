@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { getCurrentOrgId } from "@/lib/organization";
 
 /**
  * API route voor het starten van een agent run
@@ -42,6 +43,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // TODO: UserAgent table doesn't have organizationId yet - filtering by userId only for now
+    const orgId = await getCurrentOrgId(user.id);
+
     // Check if UserAgent exists and belongs to the logged-in user (no existence leak)
     const userAgent = await prisma.userAgent.findFirst({
       where: {
@@ -64,6 +68,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // TODO: RunLog table doesn't have organizationId yet - needs to be added for proper org isolation
     // Create RunLog with status "running"
     const runLog = await prisma.runLog.create({
       data: {

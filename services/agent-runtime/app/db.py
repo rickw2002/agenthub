@@ -135,9 +135,21 @@ def extract_keywords(query: str) -> list[str]:
     return keywords
 
 
-def search_document_chunks(workspace_id: str, query: str, limit: int = 8) -> list[dict[str, Any]]:
+def search_document_chunks(
+    workspace_id: str,
+    query: str,
+    organization_id: str,
+    project_id: str | None = None,
+    use_global_library: bool = True,
+    limit: int = 8,
+) -> list[dict[str, Any]]:
     """
-    Search for document chunks using keyword scoring.
+    Search for document chunks using keyword scoring with organization and project scoping.
+
+    Always filters by organizationId.
+    If projectId provided: includes PROJECT chunks for that project.
+    Includes GLOBAL chunks only if useGlobalLibrary is true.
+    Never mixes chunks from other projects.
 
     If no keywords extracted -> fallback to most recent chunks.
     Otherwise -> fetch candidates with ILIKE, score by keyword matches, return top N.
@@ -145,6 +157,9 @@ def search_document_chunks(workspace_id: str, query: str, limit: int = 8) -> lis
     Args:
         workspace_id: The workspace ID to search within
         query: The search query string
+        organization_id: The organization ID to filter by (required)
+        project_id: Optional project ID to filter PROJECT scope chunks
+        use_global_library: Whether to include GLOBAL scope chunks (default: True)
         limit: Maximum number of results to return (default: 8)
 
     Returns:
@@ -155,31 +170,52 @@ def search_document_chunks(workspace_id: str, query: str, limit: int = 8) -> lis
     conn = get_conn()
     try:
         with conn.cursor() as cur:
+            # Build scope filter conditions
+            scope_conditions = []
+            scope_params = [organization_id, workspace_id]
+
+            if project_id:
+                # Include PROJECT chunks for this specific project
+                scope_conditions.append('("scope" = %s AND "projectId" = %s)')
+                scope_params.append("PROJECT")
+                scope_params.append(project_id)
+
+            if use_global_library:
+                # Include GLOBAL chunks
+                scope_conditions.append('("scope" = %s)')
+                scope_params.append("GLOBAL")
+
+            if not scope_conditions:
+                # No valid scope conditions, return empty
+                return []
+
+            scope_filter = " OR ".join(scope_conditions)
+
             # If no keywords, fallback to most recent chunks
             if not keywords:
                 # Try ordering by createdAt DESC, fallback to id DESC if column doesn't exist
                 try:
                     cur.execute(
-                        """
+                        f"""
                         SELECT "id", "documentId", "workspaceId", "chunkIndex", "text"
                         FROM "DocumentChunk"
-                        WHERE "workspaceId" = %s
+                        WHERE "organizationId" = %s AND "workspaceId" = %s AND ({scope_filter})
                         ORDER BY "createdAt" DESC
                         LIMIT %s
                         """,
-                        (workspace_id, limit),
+                        (*scope_params, limit),
                     )
                 except Exception:
                     # Fallback to id DESC if createdAt doesn't exist
                     cur.execute(
-                        """
+                        f"""
                         SELECT "id", "documentId", "workspaceId", "chunkIndex", "text"
                         FROM "DocumentChunk"
-                        WHERE "workspaceId" = %s
+                        WHERE "organizationId" = %s AND "workspaceId" = %s AND ({scope_filter})
                         ORDER BY "id" DESC
                         LIMIT %s
                         """,
-                        (workspace_id, limit),
+                        (*scope_params, limit),
                     )
 
                 rows = cur.fetchall()
@@ -199,17 +235,17 @@ def search_document_chunks(workspace_id: str, query: str, limit: int = 8) -> lis
 
             # Build ILIKE OR conditions for each keyword
             keyword_patterns = [f"%{kw}%" for kw in keywords]
-            conditions = " OR ".join(['"text" ILIKE %s'] * len(keyword_patterns))
+            text_conditions = " OR ".join(['"text" ILIKE %s'] * len(keyword_patterns))
 
             # Fetch candidate set (up to 50)
             cur.execute(
                 f"""
                 SELECT "id", "documentId", "workspaceId", "chunkIndex", "text"
                 FROM "DocumentChunk"
-                WHERE "workspaceId" = %s AND ({conditions})
+                WHERE "organizationId" = %s AND "workspaceId" = %s AND ({scope_filter}) AND ({text_conditions})
                 LIMIT 50
                 """,
-                (workspace_id, *keyword_patterns),
+                (*scope_params, *keyword_patterns),
             )
             rows = cur.fetchall()
 

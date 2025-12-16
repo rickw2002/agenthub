@@ -11,6 +11,24 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum OrgRole {
+  OWNER
+  MEMBER
+  VIEWER
+}
+
+enum DocumentScope {
+  GLOBAL
+  PROJECT
+}
+
+enum DocumentStatus {
+  uploaded
+  processing
+  ready
+  failed
+}
+
 model User {
   id            String           @id @default(cuid())
   email         String           @unique
@@ -24,6 +42,7 @@ model User {
   insights      Insight[]
   chatMessages  ChatMessage[]
   workspaces    Workspace[]
+  memberships   Membership[]
 }
 
 model AgentTemplate {
@@ -138,17 +157,20 @@ model ChatMessage {
 }
 
 model Workspace {
-  id        String            @id @default(cuid())
-  name      String
-  ownerId   String
-  createdAt DateTime          @default(now())
-  updatedAt DateTime          @updatedAt
-  owner     User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  context   WorkspaceContext?
-  documents Document[]
-  chunks    DocumentChunk[]
+  id             String            @id @default(cuid())
+  name           String
+  ownerId       String
+  organizationId String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  owner         User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  organization  Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  context       WorkspaceContext?
+  documents     Document[]
+  chunks        DocumentChunk[]
 
   @@index([ownerId])
+  @@index([organizationId])
 }
 
 model WorkspaceContext {
@@ -163,32 +185,130 @@ model WorkspaceContext {
 }
 
 model Document {
-  id          String   @id @default(cuid())
-  workspaceId String
-  title       String
-  fileUrl     String
-  status      String   // bijv. "pending", "processing", "ready", "failed"
-  createdAt   DateTime @default(now())
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  chunks      DocumentChunk[]
+  id             String        @id @default(cuid())
+  workspaceId    String
+  organizationId String?
+  scope          DocumentScope @default(PROJECT)
+  projectId      String?
+  title          String
+  fileUrl        String
+  status         DocumentStatus @default(uploaded)
+  error          String?
+  createdAt      DateTime      @default(now())
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  chunks         DocumentChunk[]
 
   @@index([workspaceId])
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([scope])
 }
 
 model DocumentChunk {
-  id          String   @id @default(cuid())
-  documentId  String
-  workspaceId String
-  chunkIndex  Int
-  text        String
-  embedding   String?  // placeholder voor pgvector embedding
-  createdAt   DateTime @default(now())
-  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  id             String        @id @default(cuid())
+  documentId     String
+  workspaceId    String
+  organizationId String?
+  scope          DocumentScope @default(PROJECT)
+  projectId      String?
+  chunkIndex     Int
+  text           String
+  embedding      String?      // placeholder voor pgvector embedding
+  createdAt      DateTime      @default(now())
+  document       Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([workspaceId])
   @@index([documentId])
+  @@index([organizationId])
+  @@index([projectId])
+  @@index([scope])
   @@unique([documentId, chunkIndex])
 }
 
+model Organization {
+  id          String       @id @default(cuid())
+  name        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  memberships Membership[]
+  workspaces  Workspace[]
+  projects    Project[]
+  documents   Document[]
+  chunks      DocumentChunk[]
+}
+
+model Membership {
+  id             String        @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrgRole       @default(OWNER)
+  createdAt      DateTime      @default(now())
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+  isArchived     Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  settings       ProjectSettings?
+  chats          ProjectChat[]
+  documents      Document[]
+  chunks         DocumentChunk[]
+
+  @@index([organizationId])
+}
+
+model ProjectSettings {
+  id               String   @id @default(cuid())
+  projectId        String   @unique
+  useGlobalLibrary Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model ProjectChat {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages  ProjectChatMessage[]
+
+  @@index([projectId])
+}
+
+model ProjectChatMessage {
+  id            String   @id @default(cuid())
+  projectChatId String
+  role          String
+  content       String
+  sourcesJson   String?
+  metaJson      String?
+  createdAt     DateTime @default(now())
+
+  chat          ProjectChat @relation(fields: [projectChatId], references: [id], onDelete: Cascade)
+
+  @@index([projectChatId])
+}
 

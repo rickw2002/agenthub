@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { getCurrentOrgId } from "@/lib/organization";
 
 export async function GET() {
   try {
@@ -14,7 +15,9 @@ export async function GET() {
 
     // Bepaal (of maak) huidige workspace op basis van ingelogde user
     const workspace = await getOrCreateWorkspace(session.user.id);
+    const orgId = await getCurrentOrgId(session.user.id);
 
+    // TODO: WorkspaceContext doesn't have organizationId yet, but workspace.organizationId is checked via getOrCreateWorkspace
     const workspaceContext = await prisma.workspaceContext.findUnique({
       where: {
         workspaceId: workspace.id,
@@ -65,6 +68,7 @@ export async function PATCH(request: NextRequest) {
 
     // Bepaal (of maak) huidige workspace op basis van ingelogde user
     const workspace = await getOrCreateWorkspace(session.user.id);
+    const orgId = await getCurrentOrgId(session.user.id);
     debugWorkspaceId = workspace.id;
 
     const updateData: {
@@ -92,6 +96,7 @@ export async function PATCH(request: NextRequest) {
           : JSON.stringify(preferencesJson);
     }
 
+    // TODO: WorkspaceContext doesn't have organizationId yet, but workspace.organizationId is checked via getOrCreateWorkspace
     const workspaceContext = await prisma.workspaceContext.upsert({
       where: {
         workspaceId: workspace.id,

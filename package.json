@@ -13,7 +13,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "deploy:check": "bash scripts/deploy-check.sh",
+    "deploy:secrets": "node scripts/generate-secrets.js"
   },
   "dependencies": {
     "next": "^14.2.0",

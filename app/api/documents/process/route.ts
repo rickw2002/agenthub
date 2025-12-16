@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { getCurrentOrgId } from "@/lib/organization";
 
 const DEFAULT_CHUNK_SIZE = 1000;
 
@@ -57,12 +58,14 @@ export async function POST(request: NextRequest) {
 
     // Bepaal (of maak) workspace op basis van ingelogde user
     const workspace = await getOrCreateWorkspace(user.id);
+    const orgId = await getCurrentOrgId(user.id);
 
-    // Haal document op en controleer workspace-isolatie
+    // Haal document op en controleer workspace- en organization-isolatie
     const document = await prisma.document.findFirst({
       where: {
         id: documentId,
         workspaceId: workspace.id,
+        organizationId: orgId,
       },
     });
 
@@ -73,6 +76,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if text is a placeholder or if file content is not available
+    const isPlaceholderText = text.trim() === "[REPROCESS]" || text.trim() === "";
+    const isLocalUpload = document.fileUrl?.startsWith("local-upload://");
+
+    // If file content is not available, set status to failed and leave chunks unchanged
+    if (isPlaceholderText && isLocalUpload) {
+      await prisma.document.update({
+        where: {
+          id: document.id,
+        },
+        data: {
+          status: "failed",
+          error: "Bestandsinhoud is niet beschikbaar. Upload het document opnieuw om het te verwerken.",
+        },
+      });
+
+      return NextResponse.json(
+        {
+          documentId: document.id,
+          workspaceId: workspace.id,
+          status: "failed",
+          error: "Bestandsinhoud is niet beschikbaar. Upload het document opnieuw om het te verwerken.",
+        },
+        { status: 200 }
+      );
+    }
+
+    // Start processing: set status to processing and clear error
+    await prisma.document.update({
+      where: {
+        id: document.id,
+      },
+      data: {
+        status: "processing",
+        error: null,
+      },
+    });
+
     const chunks = createChunks(text);
 
     await prisma.$transaction(async (tx) => {
@@ -81,10 +122,11 @@ export async function POST(request: NextRequest) {
         where: {
           documentId: document.id,
           workspaceId: workspace.id,
+          organizationId: orgId,
         },
       });
 
-      // Maak nieuwe chunks aan
+      // Maak nieuwe chunks aan - copy scope, projectId, organizationId from document
       for (let i = 0; i < chunks.length; i++) {
         const chunkText = chunks[i];
 
@@ -95,6 +137,9 @@ export async function POST(request: NextRequest) {
           data: {
             documentId: document.id,
             workspaceId: workspace.id,
+            organizationId: document.organizationId,
+            scope: document.scope,
+            projectId: document.projectId,
             chunkIndex: i,
             text: chunkText,
             embedding: embeddingPlaceholder,
@@ -109,6 +154,7 @@ export async function POST(request: NextRequest) {
         },
         data: {
           status: "ready",
+          error: null,
         },
       });
     });

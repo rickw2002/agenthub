@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { getCurrentOrgId } from "@/lib/organization";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,6 +19,8 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const title = (formData.get("title") as string | null) ?? file?.name ?? "Onbenoemd document";
+    const projectIdParam = formData.get("projectId") as string | null;
+    const scopeParam = formData.get("scope") as string | null;
 
     if (!file) {
       return NextResponse.json(
@@ -28,6 +31,48 @@ export async function POST(request: NextRequest) {
 
     // Bepaal (of maak) workspace op basis van ingelogde user
     const workspace = await getOrCreateWorkspace(user.id);
+    const orgId = await getCurrentOrgId(user.id);
+
+    // Determine scope and projectId
+    let projectId: string | null = null;
+    let scope: "GLOBAL" | "PROJECT";
+
+    if (scopeParam === "GLOBAL") {
+      scope = "GLOBAL";
+      projectId = null;
+    } else if (scopeParam === "PROJECT" || projectIdParam) {
+      scope = "PROJECT";
+      
+      // If scope is PROJECT, projectId must be provided
+      if (!projectIdParam) {
+        return NextResponse.json(
+          { error: "projectId is verplicht wanneer scope=PROJECT" },
+          { status: 400 }
+        );
+      }
+
+      // Validate projectId belongs to current org
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectIdParam,
+          organizationId: orgId,
+        },
+      });
+
+      if (!project) {
+        return NextResponse.json(
+          { error: "Project niet gevonden voor deze organisatie" },
+          { status: 404 }
+        );
+      }
+
+      projectId = projectIdParam;
+    } else {
+      return NextResponse.json(
+        { error: "scope (GLOBAL of PROJECT) of projectId is verplicht" },
+        { status: 400 }
+      );
+    }
 
     // Voor nu slaan we het bestand niet fysiek op, maar bewaren we alleen metadata
     const fileUrl = `local-upload://${encodeURIComponent(file.name)}`;
@@ -35,9 +80,12 @@ export async function POST(request: NextRequest) {
     const document = await prisma.document.create({
       data: {
         workspaceId: workspace.id,
+        organizationId: orgId,
+        scope,
+        projectId,
         title,
         fileUrl,
-        status: "pending",
+        status: "uploaded",
       },
     });
 

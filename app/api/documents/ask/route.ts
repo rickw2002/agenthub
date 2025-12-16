@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { buildDocumentRagPrompt, RagOutputMode } from "@/lib/documentRagPrompt";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { getCurrentOrgId } from "@/lib/organization";
 
 const DEFAULT_MODE: RagOutputMode = "qa";
 
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { question, documentId, mode } = body ?? {};
+    const { question, documentId, mode, projectId } = body ?? {};
 
     if (!question || typeof question !== "string" || question.trim().length === 0) {
       return NextResponse.json(
@@ -44,8 +45,36 @@ export async function POST(request: NextRequest) {
 
     // Bepaal (of maak) workspace op basis van ingelogde user
     const workspace = await getOrCreateWorkspace(user.id);
+    const orgId = await getCurrentOrgId(user.id);
 
-    let targetDocument: { id: string; title: string } | null = null;
+    // Validate projectId if provided
+    let validatedProjectId: string | null = null;
+    if (projectId) {
+      if (typeof projectId !== "string") {
+        return NextResponse.json(
+          { error: "projectId moet een string zijn" },
+          { status: 400 }
+        );
+      }
+
+      const project = await prisma.project.findFirst({
+        where: {
+          id: projectId,
+          organizationId: orgId,
+        },
+      });
+
+      if (!project) {
+        return NextResponse.json(
+          { error: "Project niet gevonden voor deze organisatie" },
+          { status: 404 }
+        );
+      }
+
+      validatedProjectId = projectId;
+    }
+
+    let targetDocument: { id: string; title: string; scope: string; projectId: string | null } | null = null;
 
     if (documentId) {
       if (typeof documentId !== "string") {
@@ -59,10 +88,13 @@ export async function POST(request: NextRequest) {
         where: {
           id: documentId,
           workspaceId: workspace.id,
+          organizationId: orgId,
         },
         select: {
           id: true,
           title: true,
+          scope: true,
+          projectId: true,
         },
       });
 
@@ -76,6 +108,17 @@ export async function POST(request: NextRequest) {
       targetDocument = doc;
     }
 
+    // Build scope filter: if projectId is provided, include both GLOBAL and PROJECT scope chunks for that project
+    // If no projectId, only GLOBAL scope chunks
+    const scopeFilter = validatedProjectId
+      ? {
+          OR: [
+            { scope: "GLOBAL" as const },
+            { scope: "PROJECT" as const, projectId: validatedProjectId },
+          ],
+        }
+      : { scope: "GLOBAL" as const };
+
     // Simpele retrieval: zoek relevante chunks binnen de workspace (en optioneel document)
     const keywords = question
       .toLowerCase()
@@ -83,20 +126,29 @@ export async function POST(request: NextRequest) {
       .filter((w: string) => w.length > 3)
       .slice(0, 5);
 
+    // Build where clause with proper OR handling
+    const whereClause: any = {
+      workspaceId: workspace.id,
+      organizationId: orgId,
+      ...(targetDocument ? { documentId: targetDocument.id } : {}),
+    };
+
+    // Combine scope filter and keyword filter with AND
+    if (keywords.length > 0) {
+      whereClause.AND = [
+        scopeFilter,
+        {
+          OR: keywords.map((word) => ({
+            text: { contains: word, mode: "insensitive" as const },
+          })),
+        },
+      ];
+    } else {
+      Object.assign(whereClause, scopeFilter);
+    }
+
     let chunks = await prisma.documentChunk.findMany({
-      where: {
-        workspaceId: workspace.id,
-        ...(targetDocument
-          ? { documentId: targetDocument.id }
-          : {}),
-        ...(keywords.length > 0
-          ? {
-              OR: keywords.map((word) => ({
-                text: { contains: word, mode: "insensitive" as const },
-              })),
-            }
-          : {}),
-      },
+      where: whereClause,
       include: {
         document: {
           select: {
@@ -113,13 +165,15 @@ export async function POST(request: NextRequest) {
 
     // Fallback: als er niets matcht op keywords, pak enkele recente chunks
     if (chunks.length === 0) {
+      const fallbackWhere: any = {
+        workspaceId: workspace.id,
+        organizationId: orgId,
+        ...(targetDocument ? { documentId: targetDocument.id } : {}),
+      };
+      Object.assign(fallbackWhere, scopeFilter);
+
       chunks = await prisma.documentChunk.findMany({
-        where: {
-          workspaceId: workspace.id,
-          ...(targetDocument
-            ? { documentId: targetDocument.id }
-            : {}),
-        },
+        where: fallbackWhere,
         include: {
           document: {
             select: {

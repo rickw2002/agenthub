@@ -124,7 +124,7 @@ Of direct met Prisma:
 npx prisma db seed
 ```
 
-Dit voegt 5 voorbeeld AgentTemplates toe aan de database.
+Dit voegt 6 voorbeeld AgentTemplates toe aan de database, inclusief de nieuwe "Document Q&A (v1)" agent.
 
 ### 5. Development server starten
 
@@ -164,6 +164,26 @@ Open [http://localhost:3000](http://localhost:3000) in je browser.
 - Prod/Staging: `npx prisma migrate deploy` (past bestaande migraties toe, maakt geen nieuwe)
 - Seed (optioneel, alleen waar veilig): `npm run db:seed`
 - `prisma db push` alleen gebruiken op lege, niet- gedeelde test-omgevingen; niet voor staging/production of wanneer migratiegeschiedenis nodig is.
+
+### Database seeden op Render
+
+**Lokaal (development):**
+```bash
+npm run db:seed
+```
+
+**Op Render (production):**
+1. Ga naar je **Next.js service** op Render → **Shell** tab (of gebruik Render CLI)
+2. Voer uit:
+   ```bash
+   npm run db:seed
+   ```
+
+**Let op:** Het seed script is **idempotent** (gebruikt `upsert`), dus je kunt het veilig meerdere keren uitvoeren zonder duplicaten te creëren.
+
+**Wat wordt er geseed:**
+- 6 AgentTemplates (inclusief "Document Q&A (v1)")
+- Data Hub demo data (connections, metrics, insights) - alleen als er al een user bestaat
 
 ## Status
 

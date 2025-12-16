@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentOrgId } from "@/lib/organization";
 
 /**
  * API route voor het activeren van een agent
@@ -34,6 +35,9 @@ export async function POST(request: NextRequest) {
     if (!agentTemplate) {
       return NextResponse.json({ error: "Agent template niet gevonden" }, { status: 404 });
     }
+
+    // TODO: UserAgent table doesn't have organizationId yet - needs to be added for proper org isolation
+    const orgId = await getCurrentOrgId(session.user.id);
 
     // Maak UserAgent aan
     const userAgent = await prisma.userAgent.create({

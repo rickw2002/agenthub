@@ -1,0 +1,56 @@
+services:
+  # Next.js Main Application
+  - type: web
+    name: agenthub-nextjs
+    env: node
+    region: frankfurt
+    plan: starter
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: NEXTAUTH_URL
+        sync: false
+      - key: NEXTAUTH_SECRET
+        sync: false
+      - key: AGENT_RUNTIME_URL
+        sync: false
+      - key: AGENT_RUNTIME_SECRET
+        sync: false
+      - key: AGENT_SERVICE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
+
+  # Python Agent Runtime Service
+  - type: web
+    name: agenthub-agent-runtime
+    env: python
+    region: frankfurt
+    plan: starter
+    rootDir: services/agent-runtime
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: AGENT_RUNTIME_SECRET
+        sync: false
+      - key: AGENT_SERVICE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4.1-mini
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true
+

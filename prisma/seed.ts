@@ -282,12 +282,61 @@ Essentieel voor sales teams die tijd willen besparen bij lead qualification en v
     },
   });
 
+  // Document Q&A (v1)
+  const docQaV1 = await prisma.agentTemplate.upsert({
+    where: { slug: "doc-qa-v1" },
+    update: {},
+    create: {
+      name: "Document Q&A (v1)",
+      slug: "doc-qa-v1",
+      category: "Knowledge",
+      shortDescription: "Stel vragen over je geüploade documenten met bronvermelding.",
+      longDescription: `De Document Q&A agent geeft gegronde antwoorden op basis van je geüploade documenten. Deze agent:
+
+• Beantwoordt vragen met directe citaties uit je documenten
+• Gebruikt alleen informatie die daadwerkelijk in je documenten staat (geen hallucinaties)
+• Toont precies welke documenten en pagina's als bron zijn gebruikt
+• Geeft extra reasoning en context waar nodig
+• Identificeert wanneer informatie ontbreekt en stelt verduidelijkende vragen
+
+Elk antwoord bevat:
+- Een direct antwoord met bronvermelding (citations)
+- Extra reasoning met label wanneer aanvullende context wordt gegeven
+- Vragen wanneer informatie ontbreekt
+
+Perfect voor teams die snel informatie uit documenten, handleidingen, contracten of rapporten willen opzoeken.`,
+      type: "agent",
+      difficulty: "beginner",
+      videoUrl: null,
+      configSchema: JSON.stringify({
+        fields: [
+          {
+            name: "mode",
+            label: "Modus",
+            type: "select",
+            required: false,
+            options: ["qa", "summary", "plan", "checklist"],
+            description: "Kies de modus: qa (vragen beantwoorden), summary (samenvatten), plan (plan maken), checklist (checklist genereren)",
+          },
+          {
+            name: "documentId",
+            label: "Document ID",
+            type: "text",
+            required: false,
+            description: "Optioneel: specifiek document ID om te doorzoeken. Laat leeg om alle documenten te doorzoeken.",
+          },
+        ],
+      }),
+    },
+  });
+
   console.log("✅ Seeded agents:");
   console.log(`   - ${inboxAssistant.name}`);
   console.log(`   - ${linkedInContent.name}`);
   console.log(`   - ${pdfScraper.name}`);
   console.log(`   - ${emailReply.name}`);
   console.log(`   - ${leadResearch.name}`);
+  console.log(`   - ${docQaV1.name}`);
 
   // Seed Data Hub data
   await seedDataHub();

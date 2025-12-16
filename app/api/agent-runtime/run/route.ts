@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { runAgentRuntime } from "@/lib/agentRuntimeClient";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { getCurrentOrgId } from "@/lib/organization";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const workspace = await getOrCreateWorkspace(user.id);
+    const orgId = await getCurrentOrgId(user.id);
 
     const payload: {
       workspaceId: string;
@@ -55,11 +57,15 @@ export async function POST(req: NextRequest) {
       agentId: string;
       message: string;
       runId?: string;
+      organizationId: string;
+      projectId?: string | null;
+      useGlobalLibrary?: boolean;
     } = {
       workspaceId: workspace.id,
       userId: user.id,
       agentId,
       message,
+      organizationId: orgId,
     };
 
     // Only include runId if provided
@@ -72,13 +78,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     console.error("Agent runtime error:", error);
-    return NextResponse.json(
-      {
-        error: "Agent runtime error",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    );
+
+    // Only expose detailed error info when AGENT_RUNTIME_DEBUG is enabled
+    if (process.env.AGENT_RUNTIME_DEBUG === "1") {
+      // Try to parse JSON error details from error message (from agentRuntimeClient)
+      let errorDetails: string | object;
+      if (error instanceof Error) {
+        try {
+          const parsed = JSON.parse(error.message);
+          errorDetails = typeof parsed === "object" && parsed !== null ? parsed : error.message;
+        } catch {
+          errorDetails = error.message;
+        }
+      } else {
+        errorDetails = String(error);
+      }
+
+      return NextResponse.json(
+        {
+          error: "Agent runtime error",
+          details: errorDetails,
+        },
+        { status: 500 },
+      );
+    }
+
+    // Generic error for production
+    return NextResponse.json({ error: "Agent runtime error" }, { status: 500 });
   }
 }
 

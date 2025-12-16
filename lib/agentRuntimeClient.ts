@@ -4,6 +4,9 @@ type AgentRunInput = {
   agentId: string;
   message: string;
   runId?: string;
+  organizationId: string;
+  projectId?: string | null;
+  useGlobalLibrary?: boolean;
 };
 
 type AgentRunOutput = {

@@ -46,6 +46,8 @@ def _build_user_payload(
         context_parts.append(json.dumps(workspace_context, ensure_ascii=False))
 
     context_parts.append("DOCUMENT_CHUNKS:")
+    # Truncate each chunk text to safe max length before building prompts
+    MAX_CHUNK_TEXT_LENGTH = 4000
     for chunk in chunks:
         # We geven expliciete metadata mee zodat de LLM goede citations kan maken
         # Ensure chunkId matches the DB chunk id string (it's the "id" field from the chunk dict)
@@ -54,11 +56,15 @@ def _build_user_payload(
             "chunkId": str(chunk.get("id", "")),  # This is the DB chunk id
             "page": int(chunk.get("chunkIndex", 0)),
         }
+        # Truncate chunk text to safe max length
+        chunk_text = str(chunk.get("text", ""))
+        if len(chunk_text) > MAX_CHUNK_TEXT_LENGTH:
+            chunk_text = chunk_text[:MAX_CHUNK_TEXT_LENGTH]
         context_parts.append(
             json.dumps(
                 {
                     "meta": meta,
-                    "text": chunk.get("text", ""),
+                    "text": chunk_text,
                 },
                 ensure_ascii=False,
             )

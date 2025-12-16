@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+// Note: This is an internal service-to-service endpoint, org isolation handled via UserAgent.userId
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // TODO: UserAgent table doesn't have organizationId yet - org isolation should be enforced via userId
+    // This internal endpoint relies on service key auth; org isolation should be added when UserAgent gets organizationId
     // Fetch UserAgent with related AgentTemplate
     const userAgent = await prisma.userAgent.findUnique({
       where: { id: userAgentId },

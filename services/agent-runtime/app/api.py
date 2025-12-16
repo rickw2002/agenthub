@@ -36,9 +36,16 @@ async def run_agent(input: AgentRunInput) -> AgentRunOutput:  # noqa: A002 - inp
         # Fetch workspace context
         workspace_context = fetch_workspace_context(input.workspaceId)
 
-        # Retrieve chunks with keyword scoring
+        # Retrieve chunks with keyword scoring and project scoping
         keywords = extract_keywords(input.message)
-        chunks = search_document_chunks(input.workspaceId, input.message, limit=8)
+        chunks = search_document_chunks(
+            workspace_id=input.workspaceId,
+            query=input.message,
+            organization_id=input.organizationId,
+            project_id=input.projectId,
+            use_global_library=input.useGlobalLibrary,
+            limit=8,
+        )
 
         # Build allowed_citations set from retrieved chunks
         allowed_citations: set[tuple[str, str, int]] = set()

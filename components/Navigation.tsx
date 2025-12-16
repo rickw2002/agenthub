@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard" },
+  { name: "Projects", href: "/projects" },
   { name: "Data Hub", href: "/data" },
   { name: "Agents", href: "/agents" },
   { name: "Workflows", href: "/workflows" },
@@ -15,9 +16,35 @@ const navigationItems = [
   { name: "Account", href: "/account" },
 ];
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 export default function Navigation() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch("/api/projects");
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data.projects || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch projects:", err);
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-gray-200">
@@ -49,6 +76,70 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            {/* Project Switcher */}
+            {!projectsLoading && projects.length > 0 && (
+              <div className="relative hidden sm:block">
+                <button
+                  type="button"
+                  onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                >
+                  <span className="mr-2">Projects</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${
+                      projectDropdownOpen ? "rotate-180" : ""
+                    }`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+                {projectDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setProjectDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                      <div className="py-1">
+                        <Link
+                          href="/projects"
+                          onClick={() => setProjectDropdownOpen(false)}
+                          className={`block px-4 py-2 text-sm ${
+                            pathname === "/projects"
+                              ? "bg-primary-50 text-primary font-medium"
+                              : "text-gray-700 hover:bg-gray-100"
+                          }`}
+                        >
+                          All Projects
+                        </Link>
+                        {projects.map((project) => (
+                          <Link
+                            key={project.id}
+                            href={`/projects/${project.id}`}
+                            onClick={() => setProjectDropdownOpen(false)}
+                            className={`block px-4 py-2 text-sm ${
+                              pathname === `/projects/${project.id}`
+                                ? "bg-primary-50 text-primary font-medium"
+                                : "text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            {project.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <div className="hidden sm:block">
               <LogoutButton />
             </div>

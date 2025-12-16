@@ -9,6 +9,9 @@ class AgentRunInput(BaseModel):
     agentId: str
     message: str
     runId: str | None = None
+    organizationId: str
+    projectId: str | None = None
+    useGlobalLibrary: bool = True
 
 
 class Citation(BaseModel):
