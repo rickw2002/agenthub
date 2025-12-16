@@ -70,7 +70,7 @@ export function buildDocumentRagPrompt(options: {
     .join("\n\n");
 
   return [
-    "Je bent een AI-copilot voor MKB-bedrijven.",
+    "Je bent een AI-assistent voor MKB-bedrijven.",
     "Je antwoordt ALTIJD in het Nederlands, kort en actiegericht.",
     "",
     "=== Gebruikerscontext ===",

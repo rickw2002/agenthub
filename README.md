@@ -70,6 +70,28 @@ NEXTAUTH_SECRET="change-this-to-a-random-secret-in-production"
 
 Zorg ervoor dat `NEXTAUTH_SECRET` een willekeurige string is (bijv. gegenereerd met `openssl rand -base64 32`).
 
+### OpenAI koppeling (AI-functionaliteit)
+
+Voor de AI-functionaliteit zijn de volgende variabelen nodig:
+
+- `OPENAI_API_KEY` (**verplicht**)  
+  - Server-side secret, nooit met `NEXT_PUBLIC_` beginnen.  
+  - Te vinden/genereren in het OpenAI dashboard.
+- `OPENAI_MODEL` (*optioneel*)  
+  - Standaard: `gpt-4.1-mini`  
+  - Overschrijf dit alleen als je bewust een ander model wilt gebruiken.
+- `INTERNAL_TOKEN` (*optioneel, alleen voor production ping*)  
+  - Wordt gebruikt om `/api/internal/openai-ping` te beveiligen in productie.
+
+**Render instructie:**
+
+1. Ga in Render naar: *Service → Settings → Environment*  
+2. Voeg (of update) de variabelen:
+   - `OPENAI_API_KEY`
+   - `OPENAI_MODEL` (optioneel)
+   - `INTERNAL_TOKEN` (optioneel, alleen nodig voor de ping endpoint)
+3. Sla op en redeploy de service.
+
 ### 3. Database setup
 
 Initialiseer de database en voer migraties uit:

@@ -21,7 +21,8 @@
     "react-dom": "^18.3.0",
     "@prisma/client": "^5.19.0",
     "next-auth": "^4.24.7",
-    "bcryptjs": "^2.4.3"
+    "bcryptjs": "^2.4.3",
+    "openai": "^4.67.3"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
