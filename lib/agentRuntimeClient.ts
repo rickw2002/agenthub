@@ -3,6 +3,7 @@ type AgentRunInput = {
   userId: string;
   agentId: string;
   message: string;
+  runId?: string;
 };
 
 type AgentRunOutput = {

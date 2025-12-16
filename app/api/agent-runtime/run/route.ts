@@ -27,9 +27,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
-  const { agentId, message } = (body || {}) as {
+  const { agentId, message, runId } = (body || {}) as {
     agentId?: unknown;
     message?: unknown;
+    runId?: unknown;
   };
 
   const isValidString = (value: unknown): value is string =>
@@ -39,15 +40,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
 
+  // runId is optional, but if provided must be a non-empty string
+  const isValidRunId = runId === undefined || (typeof runId === "string" && runId.trim().length > 0);
+  if (!isValidRunId) {
+    return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
   try {
     const workspace = await getOrCreateWorkspace(user.id);
 
-    const result = await runAgentRuntime({
+    const payload: {
+      workspaceId: string;
+      userId: string;
+      agentId: string;
+      message: string;
+      runId?: string;
+    } = {
       workspaceId: workspace.id,
       userId: user.id,
       agentId,
       message,
-    });
+    };
+
+    // Only include runId if provided
+    if (runId !== undefined && typeof runId === "string" && runId.trim().length > 0) {
+      payload.runId = runId.trim();
+    }
+
+    const result = await runAgentRuntime(payload);
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {

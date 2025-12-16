@@ -8,6 +8,7 @@ class AgentRunInput(BaseModel):
     userId: str
     agentId: str
     message: str
+    runId: str | None = None
 
 
 class Citation(BaseModel):
