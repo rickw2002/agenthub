@@ -226,17 +226,28 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
+    // Fetch all messages for this chat (ordered by createdAt asc)
+    const allMessages = await prisma.projectChatMessage.findMany({
+      where: {
+        projectChatId: chat.id,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
     return NextResponse.json(
       {
         chatId: chat.id,
-        message: {
-          id: assistantMessage.id,
-          role: assistantMessage.role,
-          content: assistantMessage.content,
-          sourcesJson: assistantMessage.sourcesJson,
-          metaJson: assistantMessage.metaJson,
-          createdAt: assistantMessage.createdAt,
-        },
+        messages: allMessages.map((msg) => ({
+          id: msg.id,
+          role: msg.role,
+          content: msg.content,
+          sourcesJson: msg.sourcesJson,
+          metaJson: msg.metaJson,
+          createdAt: msg.createdAt,
+        })),
+        result: runtimeOutput,
       },
       { status: 201 }
     );
