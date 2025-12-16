@@ -41,17 +41,29 @@ export async function runAgentRuntime(payload: AgentRunInput): Promise<AgentRunO
     throw new Error(`Failed to reach agent runtime at ${url}: ${(err as Error).message}`);
   }
 
-  let text: string | undefined;
   if (!response.ok) {
+    let responseBody: string | undefined;
     try {
-      text = await response.text();
+      responseBody = await response.text();
     } catch {
       // ignore read errors
     }
-    const details = text ? ` Response body: ${text}` : "";
-    throw new Error(
-      `Agent runtime request failed with status ${response.status} ${response.statusText}.${details}`,
-    );
+
+    const errorPayload: {
+      httpStatus: number;
+      statusText: string;
+      responseBody?: string;
+    } = {
+      httpStatus: response.status,
+      statusText: response.statusText,
+    };
+
+    if (responseBody !== undefined) {
+      errorPayload.responseBody = responseBody;
+    }
+
+    // Throw a JSON-stringified error so the API route can surface real details
+    throw new Error(JSON.stringify(errorPayload));
   }
 
   try {
