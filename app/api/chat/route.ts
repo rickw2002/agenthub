@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { generateText } from "@/lib/ai";
 
-const VALID_SCOPES = ["MASTER", "GOOGLE_ADS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
+const VALID_SCOPES = [
+  "MASTER",
+  "GOOGLE_ADS",
+  "META_ADS",
+  "LINKEDIN",
+  "WEBSITE",
+  "EMAIL",
+  "SUPPORT",
+] as const;
 
 interface MetricsData {
   impressions: number;
@@ -46,6 +55,8 @@ export async function POST(request: NextRequest) {
 
     const { scope, message } = body;
 
+    // Vanaf hier: gedrag voor bekende scopes
+
     // Validate scope
     if (!scope || typeof scope !== "string") {
       return NextResponse.json(
@@ -79,7 +90,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Generate deterministic reply based on scope
+    // Generate reply based on scope (bestaand gedrag + OpenAI verrijking)
     let assistantReply = "";
 
     if (scope === "MASTER") {
@@ -130,10 +141,10 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Generate reply with KPIs and insights
+      // Bestaande deterministische reply met KPIs en inzichten (fallback)
       if (allKpis.length > 0) {
         assistantReply = "Hier is een overzicht van je data:\n\n";
-        
+
         allKpis.forEach(({ provider, kpis }) => {
           assistantReply += `${provider}: ${kpis.impressions} impressions, ${kpis.clicks} clicks, ${kpis.conversions} conversions, €${kpis.spend.toFixed(2)} spend.\n`;
         });
@@ -147,7 +158,34 @@ export async function POST(request: NextRequest) {
 
         assistantReply += "\nIs er iets specifieks dat je wilt weten over je data?";
       } else {
-        assistantReply = "Ik zie nog geen data voor je providers. Zodra er data beschikbaar is, kan ik je helpen met analyses en inzichten.";
+        assistantReply =
+          "Ik zie nog geen data voor je providers. Zodra er data beschikbaar is, kan ik je helpen met analyses en inzichten.";
+      }
+
+      // OpenAI-verrijking met dezelfde context
+      try {
+        const context = {
+          scope: "MASTER",
+          kpis: allKpis,
+          insights: allInsights,
+        };
+        const system =
+          "Je bent de AgentHub Data Hub assistent. Antwoord in het Nederlands, kort, concreet en actiegericht. Gebruik de context om de vraag van de gebruiker te beantwoorden.";
+        const extraSystem =
+          "Context (JSON):\n" + JSON.stringify(context, null, 2);
+
+        const aiReply = await generateText({
+          system,
+          extraSystem,
+          user: message,
+        });
+
+        if (aiReply && aiReply.trim().length > 0) {
+          assistantReply = aiReply.trim();
+        }
+      } catch (e) {
+        console.error("[CHAT][OPENAI][MASTER] error", e);
+        // Val terug op de deterministische assistantReply
       }
     } else {
       // For provider-specific scope, get that provider's KPIs and insights
@@ -195,12 +233,45 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          assistantReply += "\nHoe kan ik je verder helpen met je " + scope + " data?";
+          assistantReply +=
+            "\nHoe kan ik je verder helpen met je " + scope + " data?";
         } catch (e) {
           assistantReply = `Ik kon de data voor ${scope} niet laden. Probeer het later opnieuw.`;
         }
       } else {
-        assistantReply = `Ik zie nog geen data voor ${scope}. Zodra er data beschikbaar is, kan ik je helpen met analyses.`;
+        assistantReply =
+          `Ik zie nog geen data voor ${scope}. Zodra er data beschikbaar is, kan ik je helpen met analyses.`;
+      }
+
+      // OpenAI-verrijking met provider-specifieke context
+      try {
+        const context = {
+          scope,
+          latestMetricJson: latestMetric ? latestMetric.metricsJson : null,
+          insights: insights.map((insight) => ({
+            id: insight.id,
+            title: insight.title,
+            summary: insight.summary,
+            severity: insight.severity,
+            createdAt: insight.createdAt,
+          })),
+        };
+        const system = `Je bent de AgentHub Data Hub assistent voor het kanaal ${scope}. Antwoord in het Nederlands, kort, concreet en actiegericht. Gebruik de context om de vraag van de gebruiker te beantwoorden.`;
+        const extraSystem =
+          "Context (JSON):\n" + JSON.stringify(context, null, 2);
+
+        const aiReply = await generateText({
+          system,
+          extraSystem,
+          user: message,
+        });
+
+        if (aiReply && aiReply.trim().length > 0) {
+          assistantReply = aiReply.trim();
+        }
+      } catch (e) {
+        console.error("[CHAT][OPENAI][PROVIDER] error", e);
+        // Val terug op de deterministische assistantReply
       }
     }
 
