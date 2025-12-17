@@ -132,11 +132,12 @@ export async function POST(request: NextRequest) {
       extractedText = await extractTextFromFile(fileBuffer, document.title);
     } catch (extractionError) {
       console.error("[DOCUMENTS][PROCESS] Error extracting text:", extractionError);
+      // Behandel alle extractie-fouten alsof er geen leesbare tekst is gevonden
       await prisma.document.update({
         where: { id: document.id },
         data: {
           status: "failed",
-          error: `Tekstextractie mislukt: ${extractionError instanceof Error ? extractionError.message : "Unknown error"}`,
+          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
         },
       });
       return NextResponse.json(
@@ -144,9 +145,9 @@ export async function POST(request: NextRequest) {
           documentId: document.id,
           workspaceId: workspace.id,
           status: "failed",
-          error: extractionError instanceof Error ? extractionError.message : "Text extraction failed",
+          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
         },
-        { status: 500 }
+        { status: 200 }
       );
     }
 
