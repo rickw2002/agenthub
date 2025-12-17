@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { getOrCreateWorkspace } from "@/lib/workspace";
 import { getCurrentOrgId } from "@/lib/organization";
+import { supabaseAdmin } from "@/lib/supabase";
+import { extractTextFromFile } from "@/lib/text-extraction";
 
 const DEFAULT_CHUNK_SIZE = 1000;
 
@@ -40,18 +42,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { documentId, text } = body ?? {};
+    const { documentId } = body ?? {};
 
     if (!documentId || typeof documentId !== "string") {
       return NextResponse.json(
         { error: "documentId is verplicht en moet een string zijn" },
-        { status: 400 }
-      );
-    }
-
-    if (!text || typeof text !== "string") {
-      return NextResponse.json(
-        { error: "text is verplicht en moet een string zijn" },
         { status: 400 }
       );
     }
@@ -76,30 +71,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if text is a placeholder or if file content is not available
-    const isPlaceholderText = text.trim() === "[REPROCESS]" || text.trim() === "";
-    const isLocalUpload = document.fileUrl?.startsWith("local-upload://");
-
-    // If file content is not available, set status to failed and leave chunks unchanged
-    if (isPlaceholderText && isLocalUpload) {
+    if (!document.fileUrl) {
       await prisma.document.update({
-        where: {
-          id: document.id,
-        },
+        where: { id: document.id },
         data: {
           status: "failed",
-          error: "Bestandsinhoud is niet beschikbaar. Upload het document opnieuw om het te verwerken.",
+          error: "Bestands-URL ontbreekt. Upload het document opnieuw.",
         },
       });
-
       return NextResponse.json(
-        {
-          documentId: document.id,
-          workspaceId: workspace.id,
-          status: "failed",
-          error: "Bestandsinhoud is niet beschikbaar. Upload het document opnieuw om het te verwerken.",
-        },
-        { status: 200 }
+        { error: "Bestands-URL ontbreekt" },
+        { status: 400 }
       );
     }
 
@@ -114,10 +96,84 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const chunks = createChunks(text);
+    // Download file from Supabase Storage
+    const bucketName = "documents";
+    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
+      .from(bucketName)
+      .download(document.fileUrl);
+
+    if (downloadError || !fileData) {
+      console.error("[DOCUMENTS][PROCESS] Error downloading file:", downloadError);
+      await prisma.document.update({
+        where: { id: document.id },
+        data: {
+          status: "failed",
+          error: `Bestand kon niet worden gedownload: ${downloadError?.message || "Unknown error"}`,
+        },
+      });
+      return NextResponse.json(
+        {
+          documentId: document.id,
+          workspaceId: workspace.id,
+          status: "failed",
+          error: downloadError?.message || "Failed to download file",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Convert Blob to Buffer
+    const arrayBuffer = await fileData.arrayBuffer();
+    const fileBuffer = Buffer.from(arrayBuffer);
+
+    // Extract text from file
+    let extractedText: string;
+    try {
+      extractedText = await extractTextFromFile(fileBuffer, document.title);
+    } catch (extractionError) {
+      console.error("[DOCUMENTS][PROCESS] Error extracting text:", extractionError);
+      await prisma.document.update({
+        where: { id: document.id },
+        data: {
+          status: "failed",
+          error: `Tekstextractie mislukt: ${extractionError instanceof Error ? extractionError.message : "Unknown error"}`,
+        },
+      });
+      return NextResponse.json(
+        {
+          documentId: document.id,
+          workspaceId: workspace.id,
+          status: "failed",
+          error: extractionError instanceof Error ? extractionError.message : "Text extraction failed",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Check if extracted text is too short (likely scanned document or empty)
+    if (extractedText.trim().length < 500) {
+      await prisma.document.update({
+        where: { id: document.id },
+        data: {
+          status: "failed",
+          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
+        },
+      });
+      return NextResponse.json(
+        {
+          documentId: document.id,
+          workspaceId: workspace.id,
+          status: "failed",
+          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
+        },
+        { status: 200 }
+      );
+    }
+
+    const chunks = createChunks(extractedText);
 
     await prisma.$transaction(async (tx) => {
-      // Verwijder bestaande chunks voor dit document (indien opnieuw verwerken)
+      // Delete old chunks for this document
       await tx.documentChunk.deleteMany({
         where: {
           documentId: document.id,

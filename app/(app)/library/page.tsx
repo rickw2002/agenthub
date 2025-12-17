@@ -77,8 +77,6 @@ export default function LibraryPage() {
       setProcessing((prev) => new Set(prev).add(documentId));
 
       // Process document (extract text and create chunks)
-      // In a real implementation, you'd extract text from the file
-      // For now, using a placeholder
       const processResponse = await fetch("/api/documents/process", {
         method: "POST",
         headers: {
@@ -86,7 +84,6 @@ export default function LibraryPage() {
         },
         body: JSON.stringify({
           documentId,
-          text: `Placeholder extracted text from ${file.name}. In a real implementation, this would be extracted from the actual file content.`,
         }),
       });
 
@@ -140,8 +137,7 @@ export default function LibraryPage() {
       setError(null);
       setProcessing((prev) => new Set(prev).add(documentId));
 
-      // Call process endpoint with placeholder text (actual text extraction should happen server-side)
-      // For minimal implementation, we use a placeholder that indicates reprocessing
+      // Call process endpoint (text extraction happens server-side from Supabase Storage)
       const response = await fetch("/api/documents/process", {
         method: "POST",
         headers: {
@@ -149,7 +145,6 @@ export default function LibraryPage() {
         },
         body: JSON.stringify({
           documentId,
-          text: "[REPROCESS]",
         }),
       });
 
