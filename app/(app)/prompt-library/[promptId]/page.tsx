@@ -54,7 +54,7 @@ export default function PromptDetailPage({ params }: PromptDetailPageProps) {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold">Prompt not found</h1>
         <p className="text-sm text-gray-600">
-          We couldn't find a prompt with ID "{params.promptId}".
+          We couldn&apos;t find a prompt with ID &quot;{params.promptId}&quot;.
         </p>
       </div>
     );

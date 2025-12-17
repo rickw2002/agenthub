@@ -4,22 +4,6 @@ import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { getOrCreateWorkspace } from "@/lib/workspace";
 import { getCurrentOrgId } from "@/lib/organization";
 import { supabaseAdmin } from "@/lib/supabase";
-import { extractTextFromFile } from "@/lib/text-extraction";
-import { extractTextWithOCR } from "@/lib/ocr";
-
-const DEFAULT_CHUNK_SIZE = 1000;
-
-function createChunks(text: string, chunkSize: number = DEFAULT_CHUNK_SIZE): string[] {
-  const chunks: string[] = [];
-  let index = 0;
-
-  while (index < text.length) {
-    chunks.push(text.slice(index, index + chunkSize));
-    index += chunkSize;
-  }
-
-  return chunks;
-}
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { documentId, forceOCR } = body ?? {};
+    const { documentId } = body ?? {};
 
     if (!documentId || typeof documentId !== "string") {
       return NextResponse.json(
@@ -97,156 +81,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Download file from Supabase Storage
-    const bucketName = "documents";
-    const { data: fileData, error: downloadError } = await supabaseAdmin.storage
-      .from(bucketName)
-      .download(document.fileUrl);
-
-    if (downloadError || !fileData) {
-      console.error("[DOCUMENTS][PROCESS] Error downloading file:", downloadError);
-      await prisma.document.update({
-        where: { id: document.id },
-        data: {
-          status: "failed",
-          error: `Bestand kon niet worden gedownload: ${downloadError?.message || "Unknown error"}`,
-        },
-      });
-      return NextResponse.json(
-        {
-          documentId: document.id,
-          workspaceId: workspace.id,
-          status: "failed",
-          error: downloadError?.message || "Failed to download file",
-        },
-        { status: 500 }
-      );
-    }
-
-    // Convert Blob to Buffer
-    const arrayBuffer = await fileData.arrayBuffer();
-    const fileBuffer = Buffer.from(arrayBuffer);
-
-    // Extract text from file (optionally via OCR in a future implementation)
-    let extractedText: string;
-    try {
-      // NOTE: DocumentStatus enum ondersteunt "needs_ocr" nog niet als DB-waarde.
-      // We vertrouwen daarom op de expliciete forceOCR-vlag vanuit de client,
-      // die alleen wordt gezet als de vorige API-respons status "needs_ocr" teruggaf.
-      const useOCR = forceOCR === true;
-
-      if (useOCR) {
-        // Future path: real OCR implementation
-        extractedText = await extractTextWithOCR(fileBuffer);
-      } else {
-        extractedText = await extractTextFromFile(fileBuffer, document.title);
-      }
-    } catch (extractionError) {
-      console.error("[DOCUMENTS][PROCESS] Error extracting text:", extractionError);
-
-      // Dedicated path for documents that likely need OCR
-      if (extractionError instanceof Error && extractionError.message === "NO_READABLE_TEXT") {
-        const ocrMessage = "Dit document bevat geen goed leesbare tekst. OCR is vereist.";
-
-        // Mark document as needing OCR in the API response.
-        // NOTE: Database status enum ondersteunt deze waarde nog niet;
-        // we laten de bestaande status in de database staan en communiceren
-        // de specialised status via de API-response.
-        await prisma.document.update({
-          where: { id: document.id },
-          data: {
-            // Laat status ongewijzigd om schema-conforme waarden te behouden
-            error: ocrMessage,
-          },
-        });
-
-        return NextResponse.json(
-          {
-            documentId: document.id,
-            workspaceId: workspace.id,
-            status: "needs_ocr",
-            error: ocrMessage,
-          },
-          { status: 200 }
-        );
-      }
-
-      // All other extraction errors are treated as technical failures
-      await prisma.document.update({
-        where: { id: document.id },
-        data: {
-          status: "failed",
-          error:
-            extractionError instanceof Error
-              ? extractionError.message
-              : "Tekstextractie mislukt: onbekende fout",
-        },
-      });
-      return NextResponse.json(
-        {
-          documentId: document.id,
-          workspaceId: workspace.id,
-          status: "failed",
-          error:
-            extractionError instanceof Error
-              ? extractionError.message
-              : "Text extraction failed",
-        },
-        { status: 500 }
-      );
-    }
-
-    const chunks = createChunks(extractedText);
-
-    await prisma.$transaction(async (tx) => {
-      // Delete old chunks for this document
-      await tx.documentChunk.deleteMany({
-        where: {
-          documentId: document.id,
-          workspaceId: workspace.id,
-          organizationId: orgId,
-        },
-      });
-
-      // Maak nieuwe chunks aan - copy scope, projectId, organizationId from document
-      for (let i = 0; i < chunks.length; i++) {
-        const chunkText = chunks[i];
-
-        // Placeholder embedding als string; later vervangen door echte pgvector
-        const embeddingPlaceholder = null as string | null;
-
-        await tx.documentChunk.create({
-          data: {
-            documentId: document.id,
-            workspaceId: workspace.id,
-            organizationId: document.organizationId,
-            scope: document.scope,
-            projectId: document.projectId,
-            chunkIndex: i,
-            text: chunkText,
-            embedding: embeddingPlaceholder,
-          },
-        });
-      }
-
-      // Update document status naar ready
-      await tx.document.update({
-        where: {
-          id: document.id,
-        },
-        data: {
-          status: "ready",
-          error: null,
-        },
-      });
-    });
-
     return NextResponse.json(
       {
         documentId: document.id,
         workspaceId: workspace.id,
-        chunks: chunks.length,
-        status: "ready",
+        status: "disabled",
+        error: "Documentverwerking is uitgeschakeld in deze omgeving.",
       },
       { status: 200 }
     );
