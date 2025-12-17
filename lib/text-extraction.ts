@@ -4,6 +4,15 @@ const pdfParseModule = require("pdf-parse") as {
   default?: (buffer: Buffer) => Promise<{ text: string }>;
 } | ((buffer: Buffer) => Promise<{ text: string }>);
 
+// Minimal diagnostics to inspect the export shape of pdf-parse
+console.log("[PDF-PARSE][TYPE]", typeof pdfParseModule);
+console.log(
+  "[PDF-PARSE][KEYS]",
+  pdfParseModule && typeof pdfParseModule === "object" ? Object.keys(pdfParseModule) : null
+);
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+console.log("[PDF-PARSE][DEFAULT_TYPE]", typeof (pdfParseModule as any)?.default);
+
 const pdfParse: (buffer: Buffer) => Promise<{ text: string }> =
   typeof pdfParseModule === "function"
     ? pdfParseModule
