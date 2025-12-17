@@ -171,6 +171,50 @@ export default function LibraryPage() {
     }
   };
 
+  const handleRunOCR = async (documentId: string) => {
+    try {
+      setError(null);
+      setProcessing((prev) => new Set(prev).add(documentId));
+
+      const response = await fetch("/api/documents/process", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          documentId,
+          forceOCR: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to run OCR");
+      }
+
+      // Surface non-fatal OCR feedback (e.g. OCR_NOT_IMPLEMENTED / needs_ocr)
+      if (data.error) {
+        setError(data.error);
+      }
+
+      setProcessing((prev) => {
+        const next = new Set(prev);
+        next.delete(documentId);
+        return next;
+      });
+
+      await fetchDocuments();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to run OCR");
+      setProcessing((prev) => {
+        const next = new Set(prev);
+        next.delete(documentId);
+        return next;
+      });
+    }
+  };
+
   const getStatusBadge = (status: string, error: string | null, isProcessing: boolean) => {
     if (isProcessing) {
       return (
@@ -181,6 +225,12 @@ export default function LibraryPage() {
     }
 
     switch (status) {
+      case "needs_ocr":
+        return (
+          <span className="px-2 py-1 text-xs font-medium rounded bg-yellow-100 text-yellow-800">
+            OCR vereist
+          </span>
+        );
       case "uploaded":
         return (
           <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-800">
@@ -317,6 +367,17 @@ export default function LibraryPage() {
                             className="text-primary hover:text-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {isProcessing ? "Processing..." : "Reprocess"}
+                          </button>
+                        )}
+                        {doc.status === "needs_ocr" && (
+                          <button
+                            type="button"
+                            onClick={() => handleRunOCR(doc.id)}
+                            disabled={isProcessing}
+                            title="Dit document bevat geen leesbare tekst. OCR is vereist. Deze OCR-run is experimenteel (beta)."
+                            className="text-primary hover:text-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isProcessing ? "Processing..." : "Run OCR (beta)"}
                           </button>
                         )}
                         <button

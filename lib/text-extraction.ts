@@ -42,9 +42,32 @@ export async function extractTextFromFile(
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
     const data = await pdfParse(buffer);
-    return data.text || "";
+    const text = data.text || "";
+
+    // Basic debug logging for PDF extraction
+    const length = text.length;
+    const preview = text.slice(0, 300).replace(/\s+/g, " ").trim();
+    console.log("[TEXT-EXTRACTION][PDF]", {
+      length,
+      preview,
+    });
+
+    // If the extracted text is very short, treat it as \"no readable text\"
+    if (length < 500) {
+      // Special signal for callers: document likely needs OCR
+      throw new Error("NO_READABLE_TEXT");
+    }
+
+    return text;
   } catch (error) {
-    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : "Unknown error"}`);
+    // Preserve NO_READABLE_TEXT as a dedicated, detectable signal
+    if (error instanceof Error && error.message === "NO_READABLE_TEXT") {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to extract text from PDF: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 }
 

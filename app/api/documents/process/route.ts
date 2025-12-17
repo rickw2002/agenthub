@@ -5,6 +5,7 @@ import { getOrCreateWorkspace } from "@/lib/workspace";
 import { getCurrentOrgId } from "@/lib/organization";
 import { supabaseAdmin } from "@/lib/supabase";
 import { extractTextFromFile } from "@/lib/text-extraction";
+import { extractTextWithOCR } from "@/lib/ocr";
 
 const DEFAULT_CHUNK_SIZE = 1000;
 
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { documentId } = body ?? {};
+    const { documentId, forceOCR } = body ?? {};
 
     if (!documentId || typeof documentId !== "string") {
       return NextResponse.json(
@@ -126,38 +127,56 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await fileData.arrayBuffer();
     const fileBuffer = Buffer.from(arrayBuffer);
 
-    // Extract text from file
+    // Extract text from file (optionally via OCR in a future implementation)
     let extractedText: string;
     try {
-      extractedText = await extractTextFromFile(fileBuffer, document.title);
+      const useOCR = forceOCR === true && document.status === "needs_ocr";
+
+      if (useOCR) {
+        // Future path: real OCR implementation
+        extractedText = await extractTextWithOCR(fileBuffer);
+      } else {
+        extractedText = await extractTextFromFile(fileBuffer, document.title);
+      }
     } catch (extractionError) {
       console.error("[DOCUMENTS][PROCESS] Error extracting text:", extractionError);
-      // Behandel alle extractie-fouten alsof er geen leesbare tekst is gevonden
-      await prisma.document.update({
-        where: { id: document.id },
-        data: {
-          status: "failed",
-          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
-        },
-      });
-      return NextResponse.json(
-        {
-          documentId: document.id,
-          workspaceId: workspace.id,
-          status: "failed",
-          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
-        },
-        { status: 200 }
-      );
-    }
 
-    // Check if extracted text is too short (likely scanned document or empty)
-    if (extractedText.trim().length < 500) {
+      // Dedicated path for documents that likely need OCR
+      if (extractionError instanceof Error && extractionError.message === "NO_READABLE_TEXT") {
+        const ocrMessage = "Dit document bevat geen goed leesbare tekst. OCR is vereist.";
+
+        // Mark document as needing OCR in the API response.
+        // NOTE: Database status enum ondersteunt deze waarde nog niet;
+        // we laten de bestaande status in de database staan en communiceren
+        // de specialised status via de API-response.
+        await prisma.document.update({
+          where: { id: document.id },
+          data: {
+            // Laat status ongewijzigd om schema-conforme waarden te behouden
+            error: ocrMessage,
+          },
+        });
+
+        return NextResponse.json(
+          {
+            documentId: document.id,
+            workspaceId: workspace.id,
+            status: "needs_ocr",
+            error: ocrMessage,
+          },
+          { status: 200 }
+        );
+      }
+
+      // All other extraction errors are treated as technical failures
       await prisma.document.update({
         where: { id: document.id },
         data: {
           status: "failed",
-          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
+          error:
+            extractionError instanceof Error
+              ? extractionError.message
+              : "Tekstextractie mislukt: onbekende fout",
         },
       });
       return NextResponse.json(
@@ -165,9 +184,12 @@ export async function POST(request: NextRequest) {
           documentId: document.id,
           workspaceId: workspace.id,
           status: "failed",
-          error: "Geen leesbare tekst gevonden. Mogelijk gescand document (OCR nodig).",
+          error:
+            extractionError instanceof Error
+              ? extractionError.message
+              : "Text extraction failed",
         },
-        { status: 200 }
+        { status: 500 }
       );
     }
 
