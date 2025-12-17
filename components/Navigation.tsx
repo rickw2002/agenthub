@@ -12,6 +12,7 @@ const navigationItems = [
   { name: "Agents", href: "/agents" },
   { name: "Workflows", href: "/workflows" },
   { name: "Library", href: "/library" },
+  { name: "Prompt Library", href: "/prompt-library" },
   { name: "Support", href: "/support" },
   { name: "Account", href: "/account" },
 ];
