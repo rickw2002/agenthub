@@ -130,7 +130,10 @@ export async function POST(request: NextRequest) {
     // Extract text from file (optionally via OCR in a future implementation)
     let extractedText: string;
     try {
-      const useOCR = forceOCR === true && document.status === "needs_ocr";
+      // NOTE: DocumentStatus enum ondersteunt "needs_ocr" nog niet als DB-waarde.
+      // We vertrouwen daarom op de expliciete forceOCR-vlag vanuit de client,
+      // die alleen wordt gezet als de vorige API-respons status "needs_ocr" teruggaf.
+      const useOCR = forceOCR === true;
 
       if (useOCR) {
         // Future path: real OCR implementation
