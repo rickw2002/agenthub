@@ -1,5 +1,5 @@
-import pdfParse from "pdf-parse";
-import mammoth from "mammoth";
+import * as pdfParse from "pdf-parse";
+import * as mammoth from "mammoth";
 
 export async function extractTextFromFile(
   fileBuffer: Buffer,
