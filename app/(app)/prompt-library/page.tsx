@@ -1,6 +1,7 @@
 
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Prompt, PromptLevel } from "@/lib/prompt-library";
 import { mockPrompts } from "@/lib/prompt-library-mock";
@@ -223,9 +224,10 @@ export default function PromptLibraryPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visiblePrompts.map((prompt) => (
-          <article
+          <Link
             key={prompt.id}
-            className="border rounded-lg p-4 bg-white flex flex-col justify-between"
+            href={`/prompt-library/${prompt.id}`}
+            className="border rounded-lg p-4 bg-white flex flex-col justify-between hover:bg-gray-50 transition-colors"
           >
             <div>
               <h2 className="text-base font-semibold mb-1">{prompt.title}</h2>
@@ -243,7 +245,7 @@ export default function PromptLibraryPage() {
                 ))}
               </div>
             </div>
-          </article>
+          </Link>
         ))}
       </div>
     </div>
