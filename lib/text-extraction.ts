@@ -1,5 +1,8 @@
-import * as pdfParse from "pdf-parse";
-import * as mammoth from "mammoth";
+// Use CommonJS-style requires to avoid ESM default export interop issues in Next.js build
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string }>;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const mammoth = require("mammoth") as typeof import("mammoth");
 
 export async function extractTextFromFile(
   fileBuffer: Buffer,
