@@ -223,7 +223,7 @@ export default function AgentDetail({ agent }: AgentDetailProps) {
                   </p>
                   <div className="mt-6">
                     <a
-                      href="mailto:support@agenthub.nl?subject=Support vraag over agent"
+                      href="mailto:support@bureau-ai.nl?subject=Support vraag over agent"
                       className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
                     >
                       Neem contact op

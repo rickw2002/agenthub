@@ -15,7 +15,7 @@ export default function Home() {
       <div className="bg-violet-50 border-b border-violet-100 text-sm">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-4">
           <p className="text-gray-700">
-            <span className="font-semibold text-violet-700">NIEUW —</span> AgentHub is live. Activeer
+            <span className="font-semibold text-violet-700">NIEUW —</span> Bureau-AI is live. Activeer
             AI-agents voor je bedrijf.
           </p>
           <Link
@@ -32,7 +32,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Link href="/" className="text-xl font-semibold tracking-tight text-gray-900">
-              AgentHub
+              Bureau-AI
             </Link>
           </div>
 
@@ -75,7 +75,7 @@ export default function Home() {
                 Activeer AI-agents voor je bedrijf. Zonder complexiteit.
               </h1>
               <p className="text-base sm:text-lg text-gray-600">
-                AgentHub helpt MKB-bedrijven om AI-agents te activeren, runnen en beheren vanuit één
+                Bureau-AI helpt MKB-bedrijven om AI-agents te activeren, runnen en beheren vanuit één
                 dashboard. Praktisch, overzichtelijk en gemaakt voor kleine teams.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -97,7 +97,7 @@ export default function Home() {
             {/* Product preview mock */}
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-gray-900">AgentHub overzicht</h2>
+                <h2 className="text-sm font-medium text-gray-900">Bureau-AI overzicht</h2>
                 <span className="text-xs text-gray-500">Live demo</span>
               </div>
 
@@ -178,7 +178,7 @@ export default function Home() {
                 {
                   step: "Stap 1",
                   title: "Account aanmaken",
-                  description: "Maak een gratis account aan en log in op je AgentHub dashboard.",
+                  description: "Maak een gratis account aan en log in op je Bureau-AI dashboard.",
                 },
                 {
                   step: "Stap 2",
@@ -209,7 +209,7 @@ export default function Home() {
         {/* Feature teaser */}
         <section id="pricing" className="py-12 bg-gray-50">
           <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Wat je krijgt met AgentHub</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Wat je krijgt met Bureau-AI</h2>
             <div className="grid gap-6 md:grid-cols-3">
               {[
                 {
@@ -269,7 +269,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-100">
         <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
-          <span>© {year} AgentHub</span>
+          <span>© {year} Bureau-AI</span>
           <div className="flex items-center gap-4">
             <Link href="/auth/login" className="hover:text-gray-700">
               Inloggen

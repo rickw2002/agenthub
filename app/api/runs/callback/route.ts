@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
  * API route voor callback van workflow engine (n8n)
  * POST /api/runs/callback
  * 
- * This endpoint is called by external services to update run status
+ * This endpoint is called by external services (n8n) to update run status
+ * TODO: Verify this is used by n8n and not Python runtime
  */
 export async function POST(request: NextRequest) {
   try {

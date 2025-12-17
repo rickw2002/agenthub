@@ -51,6 +51,9 @@ Perfect voor MKB-bedrijven die veel e-mailverkeer hebben en tijd willen besparen
           },
         ],
       }),
+      executor: "n8n",
+      n8nWorkflowId: null,
+      n8nWebhookPath: null,
     },
   });
 
@@ -107,6 +110,9 @@ Ideaal voor MKB-bedrijven die hun online aanwezigheid willen versterken zonder d
           },
         ],
       }),
+      executor: "n8n",
+      n8nWorkflowId: null,
+      n8nWebhookPath: null,
     },
   });
 
@@ -164,6 +170,9 @@ Perfect voor bedrijven die regelmatig offertes, contracten, facturen of rapporte
           },
         ],
       }),
+      executor: "n8n",
+      n8nWorkflowId: null,
+      n8nWebhookPath: null,
     },
   });
 
@@ -221,6 +230,9 @@ Geschikt voor sales teams en accountmanagers die veel e-mailverkeer hebben en sn
           },
         ],
       }),
+      executor: "n8n",
+      n8nWorkflowId: null,
+      n8nWebhookPath: null,
     },
   });
 
@@ -279,6 +291,9 @@ Essentieel voor sales teams die tijd willen besparen bij lead qualification en v
           },
         ],
       }),
+      executor: "n8n",
+      n8nWorkflowId: null,
+      n8nWebhookPath: null,
     },
   });
 
@@ -327,6 +342,9 @@ Perfect voor teams die snel informatie uit documenten, handleidingen, contracten
           },
         ],
       }),
+      executor: "n8n",
+      n8nWorkflowId: null,
+      n8nWebhookPath: null,
     },
   });
 

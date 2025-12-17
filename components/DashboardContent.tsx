@@ -56,12 +56,15 @@ export default function DashboardContent({
     setRunningAgents((prev) => new Set(prev).add(userAgentId));
 
     try {
-      const response = await fetch("/api/agents/run", {
+      const response = await fetch("/api/executions/run", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userAgentId }),
+        body: JSON.stringify({ 
+          userAgentId,
+          input: {}, // Empty input for now - can be extended later
+        }),
       });
 
       const data = await response.json();
@@ -79,7 +82,7 @@ export default function DashboardContent({
     } catch (error) {
       setErrorMessages((prev) => ({
         ...prev,
-        [userAgentId]: "Er is iets misgegaan. Probeer het opnieuw.",
+        [userAgentId]: error instanceof Error ? error.message : "Er is iets misgegaan. Probeer het opnieuw.",
       }));
     } finally {
       // Remove loading state

@@ -56,6 +56,9 @@ model AgentTemplate {
   difficulty      String      // bijv. "beginner", "advanced"
   videoUrl        String?     // optioneel
   configSchema    String      // JSON veld met configuratie schema
+  executor        String      @default("n8n") // "n8n" of andere executor
+  n8nWorkflowId   String?     // n8n workflow ID
+  n8nWebhookPath  String?     // n8n webhook path
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   userAgents      UserAgent[]
@@ -76,16 +79,18 @@ model UserAgent {
 }
 
 model RunLog {
-  id          String     @id @default(cuid())
-  userAgentId String
-  status      String     // "queued" | "running" | "success" | "failed"
-  summary     String?
-  resultUrl   String?
-  error       String?
-  metadata    String?    // JSON as string
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  userAgent   UserAgent  @relation(fields: [userAgentId], references: [id], onDelete: Cascade)
+  id            String     @id @default(cuid())
+  userAgentId  String
+  status        String     // "queued" | "running" | "success" | "failed"
+  summary       String?
+  resultUrl     String?
+  error         String?
+  metadata      String?    // JSON as string
+  executor      String     @default("n8n") // "n8n" of andere executor
+  externalRunId String?    // n8n execution ID of andere external ID
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  userAgent     UserAgent  @relation(fields: [userAgentId], references: [id], onDelete: Cascade)
 }
 
 // Data Hub Models
@@ -241,6 +246,7 @@ model Organization {
   projects    Project[]
   documents   Document[]
   chunks      DocumentChunk[]
+  prompts     Prompt[]
 }
 
 model Membership {
@@ -310,5 +316,19 @@ model ProjectChatMessage {
   chat          ProjectChat @relation(fields: [projectChatId], references: [id], onDelete: Cascade)
 
   @@index([projectChatId])
+}
+
+model Prompt {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  body           String
+  tags           String   // Comma-separated tags
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }
 

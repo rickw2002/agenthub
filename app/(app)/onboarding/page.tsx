@@ -106,7 +106,7 @@ export default function OnboardingPage() {
               Stap 1: Over jou en je bedrijf
             </h1>
             <p className="text-gray-600 mb-6">
-              Vertel kort wie je bent en in welke context je AgentHub gaat
+              Vertel kort wie je bent en in welke context je Bureau-AI gaat
               gebruiken.
             </p>
             <div className="space-y-4">
@@ -206,7 +206,7 @@ export default function OnboardingPage() {
               Stap 3: Doelen en verwachtingen
             </h1>
             <p className="text-gray-600 mb-6">
-              Waar hoop je dat AgentHub het meeste impact maakt?
+              Waar hoop je dat Bureau-AI het meeste impact maakt?
             </p>
             <div className="space-y-4">
               <div>
@@ -255,12 +255,12 @@ export default function OnboardingPage() {
               Stap 4: Feedback en gewenste agents
             </h1>
             <p className="text-gray-600 mb-6">
-              Help ons AgentHub beter maken voor jouw situatie.
+              Help ons Bureau-AI beter maken voor jouw situatie.
             </p>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Feedback op AgentHub (optioneel)
+                  Feedback op Bureau-AI (optioneel)
                 </label>
                 <textarea
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"

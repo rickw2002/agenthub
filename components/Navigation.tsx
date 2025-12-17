@@ -13,6 +13,7 @@ const navigationItems = [
   { name: "Workflows", href: "/workflows" },
   { name: "Library", href: "/library" },
   { name: "Prompt Library", href: "/prompt-library" },
+  { name: "Prompts", href: "/prompts" },
   { name: "Support", href: "/support" },
   { name: "Account", href: "/account" },
 ];
@@ -54,7 +55,7 @@ export default function Navigation() {
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/dashboard" className="text-xl font-bold text-primary">
-                AgentHub
+                Bureau-AI
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
