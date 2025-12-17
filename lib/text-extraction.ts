@@ -1,6 +1,5 @@
 // Use CommonJS-style requires and normalize default/namespace exports
 // to avoid ESM interop issues in different environments.
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const pdfParseModule = require("pdf-parse") as {
   default?: (buffer: Buffer) => Promise<{ text: string }>;
 } | ((buffer: Buffer) => Promise<{ text: string }>);
@@ -10,7 +9,6 @@ const pdfParse: (buffer: Buffer) => Promise<{ text: string }> =
     ? pdfParseModule
     : (pdfParseModule as { default: (buffer: Buffer) => Promise<{ text: string }> }).default;
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const mammothModule = require("mammoth") as typeof import("mammoth") & {
   default?: typeof import("mammoth");
 };
