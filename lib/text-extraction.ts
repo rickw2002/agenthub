@@ -1,6 +1,21 @@
-// Use CommonJS-style requires to avoid ESM default export interop issues in Next.js build
-const pdfParse = require("pdf-parse") as (buffer: Buffer) => Promise<{ text: string }>;
-const mammoth = require("mammoth") as typeof import("mammoth");
+// Use CommonJS-style requires and normalize default/namespace exports
+// to avoid ESM interop issues in different environments.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const pdfParseModule = require("pdf-parse") as {
+  default?: (buffer: Buffer) => Promise<{ text: string }>;
+} | ((buffer: Buffer) => Promise<{ text: string }>);
+
+const pdfParse: (buffer: Buffer) => Promise<{ text: string }> =
+  typeof pdfParseModule === "function"
+    ? pdfParseModule
+    : (pdfParseModule as { default: (buffer: Buffer) => Promise<{ text: string }> }).default;
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const mammothModule = require("mammoth") as typeof import("mammoth") & {
+  default?: typeof import("mammoth");
+};
+
+const mammoth = (mammothModule.default ?? mammothModule) as typeof import("mammoth");
 
 export async function extractTextFromFile(
   fileBuffer: Buffer,
