@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import {
   resolveWorkspaceProjectContext,
   BureauAIErrorImpl,
@@ -11,6 +12,14 @@ import {
   evaluateLinkedInQuality,
   LINKEDIN_SPEC_V1,
 } from "@/lib/bureauai/quality/linkedinQualityGate";
+import {
+  listFoundationAnswers,
+  listExamples,
+  getLatestProfileCard,
+  createProfileCardNextVersionTx,
+} from "@/lib/bureauai/repo";
+import { FOUNDATIONS_KEYS } from "@/lib/bureauai/foundations";
+import { buildProfileSynthesisPrompt } from "@/lib/bureauai/prompts/profileSynthPrompt";
 
 type LinkedInGenerateRequest = {
   projectId?: string | null;
@@ -89,17 +98,141 @@ export async function POST(request: NextRequest) {
       profileCardVersion = workspaceCardVersion;
     }
 
+    // Als er nog geen ProfileCard is, probeer automatisch te synthetiseren
     if (profileCardVersion == null) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "PROFILE_NOT_SYNTHESIZED",
-          message:
-            "Er is nog geen profielkaart gesynthetiseerd voor deze scope.",
-          action: "Run eerst /api/profile/synthesize.",
-        },
-        { status: 400 }
-      );
+      try {
+        // Check of alle foundation questions zijn beantwoord
+        const foundationAnswers = await listFoundationAnswers({
+          workspaceId,
+          projectId: effectiveProjectId,
+        });
+
+        const answeredKeys = new Set(
+          foundationAnswers.map((a) => a.questionKey)
+        );
+        const allFoundationsAnswered = FOUNDATIONS_KEYS.every((key) =>
+          answeredKeys.has(key)
+        );
+
+        if (!allFoundationsAnswered) {
+          return NextResponse.json(
+            {
+              ok: false,
+              code: "PROFILE_INCOMPLETE",
+              message:
+                "Je profiel is nog niet compleet. Vul eerst alle vragen in via Account → Personalisatie.",
+              action: "Ga naar /account/personalization om je profiel af te maken.",
+            },
+            { status: 400 }
+          );
+        }
+
+        // Synthetiseer automatisch het profiel
+        const [examples, previousCard] = await Promise.all([
+          listExamples({
+            workspaceId,
+            projectId: effectiveProjectId,
+          }),
+          getLatestProfileCard({
+            workspaceId,
+            projectId: effectiveProjectId,
+          }),
+        ]);
+
+        const foundationsForPrompt = foundationAnswers.map((a) => ({
+          questionKey: a.questionKey,
+          answerText: a.answerText,
+          answerJson: a.answerJson,
+        }));
+
+        const examplesForPrompt = examples.map((e) => ({
+          kind: e.kind,
+          content: e.content,
+        }));
+
+        const previousCardsForPrompt = previousCard
+          ? {
+              voiceCard: previousCard.voiceCard,
+              audienceCard: previousCard.audienceCard,
+              offerCard: previousCard.offerCard,
+              constraints: previousCard.constraints,
+            }
+          : null;
+
+        const { system, user } = buildProfileSynthesisPrompt({
+          foundations: foundationsForPrompt,
+          examples: examplesForPrompt,
+          previousCards: previousCardsForPrompt,
+        });
+
+        const synthesizedJson = await generateText({
+          system,
+          user,
+          temperature: 0.3,
+        });
+
+        let synthesized: {
+          voiceCard: unknown;
+          audienceCard: unknown;
+          offerCard: unknown;
+          constraints: unknown;
+        };
+
+        try {
+          synthesized = JSON.parse(synthesizedJson.trim());
+        } catch (parseError) {
+          console.error(
+            "[LINKEDIN][GENERATE][SYNTHESIS] JSON parse error:",
+            parseError
+          );
+          return NextResponse.json(
+            {
+              ok: false,
+              code: "SYNTHESIS_PARSE_ERROR",
+              message:
+                "Kon gesynthetiseerd profiel niet verwerken. Probeer het opnieuw.",
+              action:
+                "Als het probleem blijft, neem contact op met de ondersteuning.",
+            },
+            { status: 500 }
+          );
+        }
+
+        // Maak nieuwe ProfileCard versie
+        const newCard = await createProfileCardNextVersionTx({
+          workspaceId,
+          projectId: effectiveProjectId,
+          voiceCard: synthesized.voiceCard as Prisma.JsonValue,
+          audienceCard: synthesized.audienceCard as Prisma.JsonValue,
+          offerCard: synthesized.offerCard as Prisma.JsonValue,
+          constraints: synthesized.constraints as Prisma.JsonValue,
+        });
+
+        profileCardVersion = newCard.version;
+
+        // Update effectiveProfile met nieuwe card data
+        effectiveProfile.workspaceCardVersion =
+          effectiveProjectId == null ? newCard.version : null;
+        effectiveProfile.projectCardVersion =
+          effectiveProjectId != null ? newCard.version : null;
+        effectiveProfile.voiceCard = synthesized.voiceCard as Prisma.JsonValue;
+        effectiveProfile.audienceCard = synthesized.audienceCard as Prisma.JsonValue;
+        effectiveProfile.offerCard = synthesized.offerCard as Prisma.JsonValue;
+        effectiveProfile.constraints = synthesized.constraints as Prisma.JsonValue;
+      } catch (synthesizeError) {
+        console.error("[LINKEDIN][GENERATE][SYNTHESIS] error:", synthesizeError);
+        return NextResponse.json(
+          {
+            ok: false,
+            code: "SYNTHESIS_ERROR",
+            message:
+              "Er is een fout opgetreden bij het automatisch synthetiseren van je profiel.",
+            action:
+              "Probeer het later opnieuw of neem contact op met de ondersteuning.",
+          },
+          { status: 500 }
+        );
+      }
     }
 
     const { voiceCard, audienceCard, offerCard, constraints, examples } =
