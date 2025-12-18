@@ -48,9 +48,9 @@ export default async function DashboardPage() {
   );
 
   // Als er geen ProfileCard is EN niet alle foundation questions zijn beantwoord,
-  // stuur de gebruiker naar Bureau-AI om hun profiel in te vullen
+  // stuur de gebruiker naar personalisatie om hun profiel in te vullen
   if (!profileCard && !allFoundationsAnswered) {
-    redirect("/bureau-ai");
+    redirect("/account/personalization");
   }
 
   // Haal UserAgents op voor deze gebruiker

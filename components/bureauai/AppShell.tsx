@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 
 interface AppShellProps {
   children: ReactNode;
+  title?: string;
+  description?: string;
 }
 
 const sidebarItems = [
@@ -14,7 +16,7 @@ const sidebarItems = [
   { name: "Settings", href: "/account" },
 ];
 
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, title, description }: AppShellProps) {
   const pathname = usePathname();
 
   return (
@@ -60,6 +62,12 @@ export function AppShell({ children }: AppShellProps) {
 
         {/* Main Content */}
         <main className="flex-1 p-8">
+          {(title || description) && (
+            <div className="mb-6">
+              {title && <h1 className="text-2xl font-bold text-zinc-900 mb-2">{title}</h1>}
+              {description && <p className="text-zinc-600">{description}</p>}
+            </div>
+          )}
           {children}
         </main>
       </div>
