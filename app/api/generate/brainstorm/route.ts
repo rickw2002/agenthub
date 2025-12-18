@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Prisma } from "@prisma/client";
 import {
   resolveWorkspaceProjectContext,
   BureauAIErrorImpl,
 } from "@/lib/bureauai/tenancy";
 import { getEffectiveProfile } from "@/lib/bureauai/effectiveProfile";
 import { generateText } from "@/lib/ai";
-import { buildBlogGeneratorPrompt } from "@/lib/bureauai/prompts/blogGeneratorPrompt";
-import {
-  buildBlogSpecV1,
-  evaluateBlogQuality,
-} from "@/lib/bureauai/quality/blogQualityGate";
+import { buildBrainstormPrompt } from "@/lib/bureauai/prompts/brainstormPrompt";
 import {
   listFoundationAnswers,
   listExamples,
@@ -20,22 +15,19 @@ import {
 } from "@/lib/bureauai/repo";
 import { FOUNDATIONS_KEYS } from "@/lib/bureauai/foundations";
 import { buildProfileSynthesisPrompt } from "@/lib/bureauai/prompts/profileSynthPrompt";
+import { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
-type BlogGenerateRequest = {
+type BrainstormRequest = {
   projectId?: string | null;
-  thought?: string;
-  length?: "short" | "medium" | "long";
-  postType?: "TOFU" | "MOFU" | "BOFU";
-  funnelPhase?: string;
+  topic?: string;
+  postType?: string;
 };
-
-const FALLBACK_MODEL_NAME = "unknown";
 
 export async function POST(request: NextRequest) {
   try {
-    let body: BlogGenerateRequest;
+    let body: BrainstormRequest;
     try {
       body = await request.json();
     } catch {
@@ -50,7 +42,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { projectId, thought, length, postType, funnelPhase } = body ?? {};
+    const { projectId, topic, postType } = body ?? {};
 
     if (
       projectId !== undefined &&
@@ -67,22 +59,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    if (!thought || typeof thought !== "string" || thought.trim().length < 10) {
-      return NextResponse.json(
-        {
-          ok: false,
-          code: "BAD_REQUEST",
-          message:
-            "thought is verplicht en moet minimaal 10 tekens lang zijn.",
-          action: "Vul een duidelijke gedachte in en probeer het opnieuw.",
-        },
-        { status: 400 }
-      );
-    }
-
-    const lengthMode: "short" | "medium" | "long" =
-      length === "short" || length === "long" ? length : "medium";
 
     const { workspaceId, projectId: effectiveProjectId } =
       await resolveWorkspaceProjectContext(projectId ?? null);
@@ -105,7 +81,6 @@ export async function POST(request: NextRequest) {
     // Als er nog geen ProfileCard is, probeer automatisch te synthetiseren
     if (profileCardVersion == null) {
       try {
-        // Check of alle foundation questions zijn beantwoord
         const foundationAnswers = await listFoundationAnswers({
           workspaceId,
           projectId: effectiveProjectId,
@@ -131,7 +106,6 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Synthetiseer automatisch het profiel
         const [examples, previousCard] = await Promise.all([
           listExamples({
             workspaceId,
@@ -186,7 +160,7 @@ export async function POST(request: NextRequest) {
           synthesized = JSON.parse(synthesizedJson.trim());
         } catch (parseError) {
           console.error(
-            "[BLOG][GENERATE][SYNTHESIS] JSON parse error:",
+            "[BRAINSTORM][SYNTHESIS] JSON parse error:",
             parseError
           );
           return NextResponse.json(
@@ -202,7 +176,6 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Maak nieuwe ProfileCard versie
         const newCard = await createProfileCardNextVersionTx({
           workspaceId,
           projectId: effectiveProjectId,
@@ -214,7 +187,6 @@ export async function POST(request: NextRequest) {
 
         profileCardVersion = newCard.version;
 
-        // Update effectiveProfile met nieuwe card data
         effectiveProfile.workspaceCardVersion =
           effectiveProjectId == null ? newCard.version : null;
         effectiveProfile.projectCardVersion =
@@ -224,7 +196,7 @@ export async function POST(request: NextRequest) {
         effectiveProfile.offerCard = synthesized.offerCard as Prisma.JsonValue;
         effectiveProfile.constraints = synthesized.constraints as Prisma.JsonValue;
       } catch (synthesizeError) {
-        console.error("[BLOG][GENERATE][SYNTHESIS] error:", synthesizeError);
+        console.error("[BRAINSTORM][SYNTHESIS] error:", synthesizeError);
         return NextResponse.json(
           {
             ok: false,
@@ -239,25 +211,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { voiceCard, audienceCard, offerCard, constraints, examples } =
+    const { voiceCard, audienceCard, offerCard, constraints } =
       effectiveProfile;
 
-    const examplesForPrompt = examples.map((e: any) => ({
-      kind: e.kind,
-      content: e.content,
-    }));
-
-    const { system, user } = buildBlogGeneratorPrompt({
-      thought: thought.trim(),
-      length: lengthMode,
+    const { system, user } = buildBrainstormPrompt({
+      topic: topic?.trim() || undefined,
       profile: {
         voiceCard,
         audienceCard,
         offerCard,
         constraints,
       },
-      examples: examplesForPrompt,
-      specVersion: "BlogSpecV1",
     });
 
     let generated: string;
@@ -265,16 +229,16 @@ export async function POST(request: NextRequest) {
       generated = await generateText({
         system,
         user,
-        temperature: 0.4,
+        temperature: 0.7, // Hoger voor meer creativiteit
       });
     } catch (err) {
-      console.error("[BLOG][GENERATE][OPENAI] error:", err);
+      console.error("[BRAINSTORM][GENERATE][OPENAI] error:", err);
       return NextResponse.json(
         {
           ok: false,
           code: "LLM_ERROR",
           message:
-            "De AI kon geen blog genereren door een fout in het taalmodel.",
+            "De AI kon geen content ideeën genereren door een fout in het taalmodel.",
           action:
             "Probeer het later opnieuw. Als het probleem blijft terugkomen, neem contact op met de ondersteuning.",
         },
@@ -282,71 +246,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const content = generated.trim();
-
-    const spec = buildBlogSpecV1(lengthMode);
-    const quality = evaluateBlogQuality({
-      text: content,
-      spec,
-      voiceCard,
-      constraints: constraints as any,
-    });
-
-    if (quality.score < 0.5) {
+    let ideas: string[];
+    try {
+      const parsed = JSON.parse(generated.trim());
+      if (Array.isArray(parsed)) {
+        ideas = parsed.filter(
+          (item): item is string =>
+            typeof item === "string" && item.trim().length > 0
+        );
+      } else {
+        throw new Error("Response is not an array");
+      }
+    } catch (parseError) {
+      console.error("[BRAINSTORM][PARSE] error:", parseError);
       return NextResponse.json(
         {
           ok: false,
-          code: "QUALITY_REJECTED",
-          message:
-            "De gegenereerde blog voldoet niet aan je profiel en contentregels.",
-          action: "Pas je thought aan of verfijn je profiel.",
+          code: "PARSE_ERROR",
+          message: "Kon gegenereerde ideeën niet verwerken.",
+          action: "Probeer het opnieuw.",
         },
-        { status: 400 }
+        { status: 500 }
       );
     }
 
-    const modelName = process.env.OPENAI_MODEL ?? FALLBACK_MODEL_NAME;
-
-    const qualityToStore = {
-      ...quality,
-      specMeta: {
-        version: spec.version,
-        lengthMode: spec.lengthMode,
-        minWords: spec.minWords,
-        channel: "blog",
-      },
-    };
-
-    const output = await prisma.output.create({
-      data: {
-        workspaceId,
-        projectId: effectiveProjectId,
-        channel: "blog",
-        mode: "thought_to_post",
-        inputJson: {
-          thought: thought.trim(),
-          length: lengthMode,
-          ...(postType && { postType }),
-          ...(funnelPhase && { funnelPhase }),
+    if (ideas.length === 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          code: "NO_IDEAS",
+          message: "Er zijn geen ideeën gegenereerd.",
+          action: "Probeer het opnieuw met een ander onderwerp.",
         },
-        content,
-        quality: qualityToStore,
-        modelName,
-        specVersion: "BlogSpecV1",
-        profileCardVersion,
-      },
-    });
+        { status: 500 }
+      );
+    }
+
+    // Optioneel: sla eerste idee op als Output (voor Content Bank)
+    // Voor nu returnen we alleen de ideeën
 
     return NextResponse.json(
       {
         ok: true,
-        content,
-        quality: {
-          score: quality.score,
-          issues: quality.issues,
-          suggestions: quality.suggestions,
-        },
-        outputId: output.id,
+        ideas,
       },
       { status: 200 }
     );
@@ -365,20 +307,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("[BLOG][GENERATE][POST] Unexpected error:", err);
+    console.error("[BRAINSTORM][POST] Unexpected error:", err);
 
     return NextResponse.json(
       {
         ok: false,
         code: "INTERNAL_ERROR",
         message:
-          "Er is een onverwachte fout opgetreden bij het genereren van de blog.",
-        action:
-          "Probeer het opnieuw. Als het probleem blijft bestaan, vernieuw de pagina of neem contact op met de ondersteuning.",
+          "Er is een onverwachte fout opgetreden bij het genereren van content ideeën.",
       },
       { status: 500 }
     );
   }
 }
-
 

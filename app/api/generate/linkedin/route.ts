@@ -25,6 +25,8 @@ type LinkedInGenerateRequest = {
   projectId?: string | null;
   thought?: string;
   length?: "short" | "medium" | "long";
+  postType?: "TOFU" | "MOFU" | "BOFU";
+  funnelPhase?: string;
 };
 
 const FALLBACK_MODEL_NAME = "unknown";
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { projectId, thought, length } = body ?? {};
+    const { projectId, thought, length, postType, funnelPhase } = body ?? {};
 
     if (
       projectId !== undefined &&
@@ -320,6 +322,8 @@ export async function POST(request: NextRequest) {
         inputJson: {
           thought: thought.trim(),
           length: lengthMode,
+          ...(postType && { postType }),
+          ...(funnelPhase && { funnelPhase }),
         },
         content,
         quality: qualityToStore,
