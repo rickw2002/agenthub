@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { getCurrentOrgId } from "@/lib/organization";
 import { getOrCreateWorkspace } from "@/lib/workspace";
-import { callN8nWebhook } from "@/lib/n8nClient";
 
 type RouteParams = {
   params: {
@@ -163,17 +162,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const workspace = await getOrCreateWorkspace(user.id);
 
-    // Check if n8n workflow is configured for project chat
-    // TODO: Add project-specific webhook path to ProjectSettings if needed
-    const projectChatWebhookPath = process.env.N8N_PROJECT_CHAT_WEBHOOK_PATH || "/webhook/bureau-ai/project-chat";
-    
-    if (!process.env.N8N_BASE_URL) {
-      return NextResponse.json(
-        { error: "Project chat workflow is not configured. Please configure N8N_BASE_URL." },
-        { status: 400 }
-      );
-    }
-
     // Store USER message
     const userMessage = await prisma.projectChatMessage.create({
       data: {
@@ -183,70 +171,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // Call n8n webhook for project chat
-    const n8nPayload = {
-      projectId,
-      chatId: chat.id,
-      message: message.trim(),
-      organizationId: orgId,
-      workspaceId: workspace.id,
-      useGlobalLibrary,
-    };
-
-    const n8nResponse = await callN8nWebhook({
-      webhookPath: projectChatWebhookPath,
-      payload: n8nPayload,
-    });
-
-    // Handle n8n response
-    if (!n8nResponse.success) {
-      // Store error message
-      const errorMessage = n8nResponse.error || "Failed to process chat message";
-      await prisma.projectChatMessage.create({
-        data: {
-          projectChatId: chat.id,
-          role: "ASSISTANT",
-          content: errorMessage,
-          metaJson: JSON.stringify({ error: errorMessage }),
-        },
-      });
-
-      return NextResponse.json(
-        {
-          error: errorMessage,
-          chatId: chat.id,
-        },
-        { status: n8nResponse.status || 500 }
-      );
-    }
-
-    // Parse n8n response
-    const responseData = n8nResponse.data as {
-      reply?: string;
-      answer_from_sources?: unknown;
-      additional_reasoning?: unknown;
-      missing_info_questions?: unknown;
-    };
-
-    // Build sourcesJson from answer_from_sources
-    const sourcesJson = responseData.answer_from_sources
-      ? JSON.stringify(responseData.answer_from_sources)
-      : null;
-
-    // Build metaJson from additional_reasoning and missing_info_questions
-    const metaJson = JSON.stringify({
-      additional_reasoning: responseData.additional_reasoning || [],
-      missing_info_questions: responseData.missing_info_questions || [],
-    });
-
-    // Store ASSISTANT message with sources and metadata
+    // n8n integration has been removed. Store a static ASSISTANT message explaining this.
     await prisma.projectChatMessage.create({
       data: {
         projectChatId: chat.id,
         role: "ASSISTANT",
-        content: responseData.reply || "Ik kan op dit moment geen antwoord genereren.",
-        sourcesJson: sourcesJson,
-        metaJson: metaJson,
+        content: "Agent-executie voor projectchats is tijdelijk uitgeschakeld terwijl we de nieuwe engine bouwen.",
+        metaJson: JSON.stringify({
+          error: "n8n integration has been removed. Project chat execution is currently disabled.",
+        }),
       },
     });
 

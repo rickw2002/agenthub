@@ -40,25 +40,21 @@ Deze handleiding helpt je om n8n op Render te deployen en de oude Python FastAPI
 - **Root Directory**: *(leeg laten)*
 
 **Build & Start:**
-- **Build Command**: *(probeer eerst leeg te laten - als Render het vereist, gebruik dan: `echo "Docker build"`)*
-- **Start Command**: *(probeer eerst leeg te laten - als Render het vereist, gebruik dan: `n8n start`)*
+- **Build Command**: `npm install -g n8n`
+- **Start Command**: `n8n start --port $PORT --host 0.0.0.0`
 
-**⚠️ BELANGRIJK - Twee Opties:**
-
-**Optie 1: Render detecteert Dockerfile automatisch (aanbevolen)**
-- Laat Build en Start commands leeg
-- Render detecteert automatisch de `Dockerfile` in de root
-- Als de velden verplicht zijn, gebruik Optie 2
-
-**Optie 2: Als Render Build/Start commands vereist**
-- **Build Command**: `echo "Building with Dockerfile"`
-- **Start Command**: `n8n start`
-- Render zal nog steeds de Dockerfile gebruiken als die in de root staat
-- De n8n Docker image start automatisch met `n8n start` als CMD
+**⚠️ BELANGRIJK:**
+- Render heeft geen Docker beschikbaar in Node omgeving
+- We installeren n8n direct via npm (werkt perfect op Render)
+- `--port $PORT` zorgt dat n8n op de juiste Render poort draait (niet 5678!)
+- `--host 0.0.0.0` zorgt dat n8n luistert op alle interfaces (niet alleen localhost)
+- Environment variables worden automatisch doorgegeven
 
 **Verificatie:**
 - Check de Logs tab na deployment
-- Je zou moeten zien dat Docker wordt gebruikt, niet npm
+- Je zou moeten zien: `npm install -g n8n` en `n8n start`
+- n8n zou moeten starten op de Render poort (niet 5678)
+- Geen "Port scan timeout" errors meer
 
 ### 1.3 Dockerfile Controleren
 

@@ -173,6 +173,11 @@ model Workspace {
   context       WorkspaceContext?
   documents     Document[]
   chunks        DocumentChunk[]
+  profileAnswers ProfileAnswer[]
+  profileStates  ProfileState[]
+  profileCards   ProfileCard[]
+  examples       Example[]
+  outputs        Output[]
 
   @@index([ownerId])
   @@index([organizationId])
@@ -277,6 +282,11 @@ model Project {
   chats          ProjectChat[]
   documents      Document[]
   chunks         DocumentChunk[]
+  profileAnswers ProfileAnswer[]
+  profileStates  ProfileState[]
+  profileCards   ProfileCard[]
+  examples       Example[]
+  outputs        Output[]
 
   @@index([organizationId])
 }
@@ -330,5 +340,136 @@ model Prompt {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+}
+
+enum ExampleKind {
+  good
+  bad
+}
+
+enum OutputChannel {
+  linkedin
+  blog
+}
+
+enum OutputMode {
+  thought_to_post
+  brainstorm
+  batch_qa
+  content_bank
+}
+
+model ProfileAnswer {
+  id          String   @id @default(cuid())
+  workspaceId String
+  projectId   String?
+  questionKey String
+  answerText  String
+  answerJson  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, projectId, questionKey])
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
+model ProfileState {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  projectId        String?
+  knownKeys        Json?
+  missingKeys      Json?
+  confidenceScore  Float    @default(0)
+  lastQuestionKey  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, projectId])
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
+model ProfileCard {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  projectId     String?
+  version       Int
+  voiceCard     Json
+  audienceCard  Json
+  offerCard     Json
+  constraints   Json
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@unique([workspaceId, projectId, version])
+  @@index([workspaceId])
+  @@index([projectId])
+}
+
+model Example {
+  id          String     @id @default(cuid())
+  workspaceId String
+  projectId   String?
+  kind        ExampleKind
+  content     String
+  notes       String?
+  createdAt   DateTime   @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([workspaceId, kind])
+}
+
+model Output {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  projectId          String?
+  channel            OutputChannel
+  mode               OutputMode
+  inputJson          Json
+  content            String
+  quality            Json?
+  tokensUsed         Int?
+  costEstimate       Float?
+  promptVersion      String?
+  modelName          String?
+  specVersion        String?
+  profileCardVersion Int?
+  rewriteCount       Int?
+  failReason         String?
+  createdAt          DateTime      @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  feedbacks Feedback[]
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([workspaceId, channel, mode, createdAt])
+}
+
+model Feedback {
+  id        String   @id @default(cuid())
+  outputId  String
+  rating    Int
+  notes     String?
+  createdAt DateTime @default(now())
+
+  output Output @relation(fields: [outputId], references: [id], onDelete: Cascade)
+
+  @@index([outputId])
 }
 

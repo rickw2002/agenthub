@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { OutputFeedback } from "@/components/bureauai/OutputFeedback";
 
 interface Project {
   id: string;
@@ -40,7 +41,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "linkedin">("chat");
 
   // Chat state
   const [chats, setChats] = useState<Chat[]>([]);
@@ -50,6 +51,19 @@ export default function ProjectDetailPage() {
   const [messageInput, setMessageInput] = useState("");
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // LinkedIn generator state (Bureau-AI)
+  const [thought, setThought] = useState("");
+  const [lengthMode, setLengthMode] = useState<"short" | "medium" | "long">(
+    "medium"
+  );
+  const [linkedinContent, setLinkedinContent] = useState<string | null>(null);
+  const [linkedinOutputId, setLinkedinOutputId] = useState<string | null>(null);
+  const [linkedinProfileVersion, setLinkedinProfileVersion] = useState<
+    number | null
+  >(null);
+  const [linkedinLoading, setLinkedinLoading] = useState(false);
+  const [linkedinError, setLinkedinError] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -172,6 +186,53 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateLinkedin = async () => {
+    if (!thought.trim() || linkedinLoading) return;
+
+    setLinkedinLoading(true);
+    setLinkedinError(null);
+    setLinkedinContent(null);
+    setLinkedinOutputId(null);
+
+    try {
+      const res = await fetch("/api/generate/linkedin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId,
+          thought: thought.trim(),
+          length: lengthMode,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        const message =
+          data?.message ||
+          "Er is iets misgegaan bij het genereren van de LinkedIn-post.";
+        const action = data?.action
+          ? ` ${data.action}`
+          : "";
+        throw new Error(message + action);
+      }
+
+      setLinkedinContent(data.content ?? null);
+      setLinkedinOutputId(data.outputId ?? null);
+      // profile version komt pas terug via feedback; hier nog niet bekend
+    } catch (err) {
+      setLinkedinError(
+        err instanceof Error
+          ? err.message
+          : "Er is iets misgegaan bij het genereren van de LinkedIn-post."
+      );
+    } finally {
+      setLinkedinLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div>
@@ -198,9 +259,39 @@ export default function ProjectDetailPage() {
         {project.description && (
           <p className="text-gray-600 mt-1">{project.description}</p>
         )}
+        {linkedinProfileVersion != null && (
+          <p className="text-xs text-gray-500 mt-1">
+            Actieve profielversie: v{linkedinProfileVersion}
+          </p>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center gap-4 mb-4 border-b border-gray-200 pb-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("chat")}
+            className={`text-sm font-medium pb-1 border-b-2 ${
+              activeTab === "chat"
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            Chat
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("linkedin")}
+            className={`text-sm font-medium pb-1 border-b-2 ${
+              activeTab === "linkedin"
+                ? "border-primary text-primary"
+                : "border-transparent text-gray-500 hover:text-gray-800"
+            }`}
+          >
+            LinkedIn generator
+          </button>
+        </div>
+
         {activeTab === "chat" && (
           <div className="flex flex-col h-[600px]">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Chat</h2>
@@ -339,6 +430,80 @@ export default function ProjectDetailPage() {
                     </button>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "linkedin" && (
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">
+              LinkedIn thought → post
+            </h2>
+            {linkedinError && (
+              <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
+                {linkedinError}
+              </div>
+            )}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Thought
+                </label>
+                <textarea
+                  value={thought}
+                  onChange={(e) => setThought(e.target.value)}
+                  rows={4}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                  placeholder="Vertel in je eigen woorden waar de post over moet gaan..."
+                  disabled={linkedinLoading}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Lengte
+                  </label>
+                  <select
+                    value={lengthMode}
+                    onChange={(e) =>
+                      setLengthMode(e.target.value as "short" | "medium" | "long")
+                    }
+                    disabled={linkedinLoading}
+                    className="text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                  >
+                    <option value="short">Kort</option>
+                    <option value="medium">Middel</option>
+                    <option value="long">Lang</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateLinkedin}
+                  disabled={linkedinLoading || thought.trim().length < 10}
+                  className="ml-auto bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                >
+                  {linkedinLoading ? "Genereren..." : "Generate LinkedIn post"}
+                </button>
+              </div>
+            </div>
+
+            {linkedinContent && (
+              <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                  Gegenereerde post
+                </h3>
+                <div className="whitespace-pre-wrap text-sm text-gray-900 mb-2">
+                  {linkedinContent}
+                </div>
+                {linkedinOutputId && (
+                  <OutputFeedback
+                    outputId={linkedinOutputId}
+                    onSubmitted={(r) =>
+                      setLinkedinProfileVersion(r.newProfileVersion)
+                    }
+                  />
+                )}
               </div>
             )}
           </div>

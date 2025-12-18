@@ -16,68 +16,12 @@ services:
         sync: false
       - key: NEXTAUTH_SECRET
         sync: false
-      - key: N8N_BASE_URL
-        sync: false
-      - key: N8N_WEBHOOK_SECRET
-        sync: false
-      - key: N8N_PROJECT_CHAT_WEBHOOK_PATH
-        value: /webhook/bureau-ai/project-chat
-        sync: false
       - key: AGENT_SERVICE_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4.1-mini
-        sync: false
-    healthCheckPath: /
-    autoDeploy: true
-
-  # n8n Workflow Engine
-  - type: web
-    name: bureau-ai-n8n
-    env: docker
-    region: frankfurt
-    plan: starter
-    dockerfilePath: ./Dockerfile
-    envVars:
-      - key: N8N_HOST
-        value: 0.0.0.0
-        sync: false
-      - key: N8N_PORT
-        value: "5678"
-        sync: false
-      - key: N8N_PROTOCOL
-        value: https
-        sync: false
-      - key: DB_TYPE
-        value: postgresdb
-        sync: false
-      - key: DB_POSTGRESDB_HOST
-        sync: false
-      - key: DB_POSTGRESDB_PORT
-        value: "5432"
-        sync: false
-      - key: DB_POSTGRESDB_DATABASE
-        sync: false
-      - key: DB_POSTGRESDB_USER
-        sync: false
-      - key: DB_POSTGRESDB_PASSWORD
-        sync: false
-      - key: DB_POSTGRESDB_SSL_ENABLED
-        value: "true"
-        sync: false
-      - key: N8N_ENCRYPTION_KEY
-        sync: false
-      - key: WEBHOOK_URL
-        sync: false
-      - key: N8N_BASIC_AUTH_ACTIVE
-        value: "true"
-        sync: false
-      - key: N8N_BASIC_AUTH_USER
-        value: admin
-        sync: false
-      - key: N8N_BASIC_AUTH_PASSWORD
         sync: false
     healthCheckPath: /
     autoDeploy: true
