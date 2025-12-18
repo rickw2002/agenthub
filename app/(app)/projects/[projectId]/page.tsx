@@ -49,12 +49,6 @@ export default function ProjectDetailPage() {
   const [blogLoading, setBlogLoading] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (projectId) {
-      fetchProject();
-    }
-  }, [projectId]);
-
   const fetchProject = async () => {
     try {
       setLoading(true);
@@ -161,6 +155,13 @@ export default function ProjectDetailPage() {
       setBlogLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (projectId) {
+      fetchProject();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   if (loading) {
     return (

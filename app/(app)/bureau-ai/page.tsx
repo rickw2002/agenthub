@@ -138,7 +138,11 @@ export default function BureauAIPage() {
       </div>
 
       <Card>
-        <Tabs tabs={tabs} activeTab={activeTool} onTabChange={setActiveTool} />
+        <Tabs
+          tabs={tabs}
+          activeTab={activeTool}
+          onTabChange={(tabId) => setActiveTool(tabId as "linkedin" | "blog")}
+        />
 
         <div className="mt-6">
           {/* LinkedIn Tab */}
