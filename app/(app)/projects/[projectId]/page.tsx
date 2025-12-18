@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { AppShell } from "@/components/bureauai/AppShell";
+import { Card } from "@/components/ui/Card";
+import { Tabs } from "@/components/ui/Tabs";
+import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
+import { Input } from "@/components/ui/Input";
 import { OutputFeedback } from "@/components/bureauai/OutputFeedback";
 
 interface Project {
@@ -17,77 +23,37 @@ interface Project {
   } | null;
 }
 
-interface ChatMessage {
-  id: string;
-  role: "USER" | "ASSISTANT";
-  content: string;
-  sourcesJson: string | null;
-  metaJson: string | null;
-  createdAt: string;
-}
-
-interface Chat {
-  id: string;
-  title: string | null;
-  createdAt: string;
-  updatedAt: string;
-  messageCount: number;
-}
-
 export default function ProjectDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const projectId = params.projectId as string;
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"chat" | "linkedin">("chat");
+  const [activeTab, setActiveTab] = useState("linkedin");
 
-  // Chat state
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [chatLoading, setChatLoading] = useState(false);
-  const [messageInput, setMessageInput] = useState("");
-  const [sending, setSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // LinkedIn generator state (Bureau-AI)
+  // LinkedIn generator state
   const [thought, setThought] = useState("");
-  const [lengthMode, setLengthMode] = useState<"short" | "medium" | "long">(
-    "medium"
-  );
+  const [lengthMode, setLengthMode] = useState<"short" | "medium" | "long">("medium");
   const [linkedinContent, setLinkedinContent] = useState<string | null>(null);
   const [linkedinOutputId, setLinkedinOutputId] = useState<string | null>(null);
-  const [linkedinProfileVersion, setLinkedinProfileVersion] = useState<
-    number | null
-  >(null);
+  const [linkedinProfileVersion, setLinkedinProfileVersion] = useState<number | null>(null);
   const [linkedinLoading, setLinkedinLoading] = useState(false);
   const [linkedinError, setLinkedinError] = useState<string | null>(null);
+
+  // Blog generator state
+  const [blogThought, setBlogThought] = useState("");
+  const [blogLengthMode, setBlogLengthMode] = useState<"short" | "medium" | "long">("medium");
+  const [blogContent, setBlogContent] = useState<string | null>(null);
+  const [blogOutputId, setBlogOutputId] = useState<string | null>(null);
+  const [blogProfileVersion, setBlogProfileVersion] = useState<number | null>(null);
+  const [blogLoading, setBlogLoading] = useState(false);
+  const [blogError, setBlogError] = useState<string | null>(null);
 
   useEffect(() => {
     if (projectId) {
       fetchProject();
     }
   }, [projectId]);
-
-  useEffect(() => {
-    if (projectId && activeTab === "chat") {
-      fetchChats();
-    }
-  }, [projectId, activeTab]);
-
-  useEffect(() => {
-    if (currentChatId && projectId) {
-      fetchMessages(currentChatId);
-    } else {
-      setMessages([]);
-    }
-  }, [currentChatId, projectId]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
 
   const fetchProject = async () => {
     try {
@@ -105,84 +71,6 @@ export default function ProjectDetailPage() {
       setError(err instanceof Error ? err.message : "Failed to load project");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchChats = async () => {
-    try {
-      setChatLoading(true);
-      const response = await fetch(`/api/projects/${projectId}/chats`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch chats");
-      }
-      const data = await response.json();
-      setChats(data.chats || []);
-      
-      // If there are chats but no current chat selected, select the first one
-      if (data.chats && data.chats.length > 0 && !currentChatId) {
-        setCurrentChatId(data.chats[0].id);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load chats");
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  const fetchMessages = async (chatId: string) => {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/chats/${chatId}/messages`);
-      if (!response.ok) {
-        throw new Error("Failed to fetch messages");
-      }
-      const data = await response.json();
-      setMessages(data.messages || []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load messages");
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!messageInput.trim() || sending) return;
-
-    const messageText = messageInput.trim();
-    setMessageInput("");
-    setSending(true);
-    setError(null);
-
-    try {
-      const response = await fetch(`/api/projects/${projectId}/chat/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: messageText,
-          chatId: currentChatId,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to send message");
-      }
-
-      const data = await response.json();
-      
-      // Update current chat ID if a new chat was created
-      if (data.chatId && !currentChatId) {
-        setCurrentChatId(data.chatId);
-      }
-      
-      // Update messages with the response
-      setMessages(data.messages || []);
-      
-      // Refresh chats list to update message counts
-      await fetchChats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send message");
-    } finally {
-      setSending(false);
     }
   };
 
@@ -213,15 +101,12 @@ export default function ProjectDetailPage() {
         const message =
           data?.message ||
           "Er is iets misgegaan bij het genereren van de LinkedIn-post.";
-        const action = data?.action
-          ? ` ${data.action}`
-          : "";
+        const action = data?.action ? ` ${data.action}` : "";
         throw new Error(message + action);
       }
 
       setLinkedinContent(data.content ?? null);
       setLinkedinOutputId(data.outputId ?? null);
-      // profile version komt pas terug via feedback; hier nog niet bekend
     } catch (err) {
       setLinkedinError(
         err instanceof Error
@@ -233,284 +118,253 @@ export default function ProjectDetailPage() {
     }
   };
 
+  const handleGenerateBlog = async () => {
+    if (!blogThought.trim() || blogLoading) return;
+
+    setBlogLoading(true);
+    setBlogError(null);
+    setBlogContent(null);
+    setBlogOutputId(null);
+
+    try {
+      const res = await fetch("/api/generate/blog", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId,
+          thought: blogThought.trim(),
+          length: blogLengthMode,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        const message =
+          data?.message ||
+          "Er is iets misgegaan bij het genereren van de blog.";
+        const action = data?.action ? ` ${data.action}` : "";
+        throw new Error(message + action);
+      }
+
+      setBlogContent(data.content ?? null);
+      setBlogOutputId(data.outputId ?? null);
+    } catch (err) {
+      setBlogError(
+        err instanceof Error
+          ? err.message
+          : "Er is iets misgegaan bij het genereren van de blog."
+      );
+    } finally {
+      setBlogLoading(false);
+    }
+  };
+
   if (loading) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Loading project...</h1>
-      </div>
+      <AppShell>
+        <div className="space-y-4">
+          <div className="h-8 w-64 bg-zinc-200 rounded-xl animate-pulse" />
+          <Card>
+            <div className="h-32 bg-zinc-100 rounded-xl animate-pulse" />
+          </Card>
+        </div>
+      </AppShell>
     );
   }
 
   if (error || !project) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Project</h1>
-        <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-800">
-          {error || "Project not found"}
-        </div>
-      </div>
+      <AppShell>
+        <Card>
+          <div className="p-4 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+            {error || "Project not found"}
+          </div>
+        </Card>
+      </AppShell>
     );
   }
 
-  return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-        {project.description && (
-          <p className="text-gray-600 mt-1">{project.description}</p>
-        )}
-        {linkedinProfileVersion != null && (
-          <p className="text-xs text-gray-500 mt-1">
-            Actieve profielversie: v{linkedinProfileVersion}
-          </p>
-        )}
-      </div>
+  const tabs = [
+    { id: "linkedin", label: "LinkedIn" },
+    { id: "blog", label: "Blog" },
+  ];
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center gap-4 mb-4 border-b border-gray-200 pb-2">
-          <button
-            type="button"
-            onClick={() => setActiveTab("chat")}
-            className={`text-sm font-medium pb-1 border-b-2 ${
-              activeTab === "chat"
-                ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-800"
-            }`}
-          >
-            Chat
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("linkedin")}
-            className={`text-sm font-medium pb-1 border-b-2 ${
-              activeTab === "linkedin"
-                ? "border-primary text-primary"
-                : "border-transparent text-gray-500 hover:text-gray-800"
-            }`}
-          >
-            LinkedIn generator
-          </button>
+  return (
+    <AppShell>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-900 mb-1">
+            {project.name}
+          </h1>
+          {project.description && (
+            <p className="text-sm text-zinc-600">{project.description}</p>
+          )}
+          {linkedinProfileVersion != null && (
+            <p className="text-xs text-zinc-500 mt-2">
+              Actieve profielversie: v{linkedinProfileVersion}
+            </p>
+          )}
         </div>
 
-        {activeTab === "chat" && (
-          <div className="flex flex-col h-[600px]">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Chat</h2>
-            
-            {error && (
-              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-                {error}
-              </div>
-            )}
+        {/* Main Content Card */}
+        <Card>
+          <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
-            {chatLoading ? (
-              <p className="text-gray-600">Loading chats...</p>
-            ) : (
-              <div className="flex flex-1 gap-4 overflow-hidden">
-                {/* Messages Area */}
-                <div className="flex-1 flex flex-col">
-                  <div className="flex-1 overflow-y-auto border border-gray-200 rounded-md p-4 mb-4 space-y-4">
-                    {messages.length === 0 ? (
-                      <p className="text-gray-500 text-center py-8">
-                        {currentChatId
-                          ? "Start een gesprek door een bericht te sturen."
-                          : "Selecteer een chat of stuur een bericht om een nieuwe chat te starten."}
-                      </p>
-                    ) : (
-                      messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`flex ${
-                            msg.role === "USER" ? "justify-end" : "justify-start"
-                          }`}
-                        >
-                          <div
-                            className={`max-w-[80%] rounded-lg p-3 ${
-                              msg.role === "USER"
-                                ? "bg-primary text-white"
-                                : "bg-gray-100 text-gray-900"
-                            }`}
-                          >
-                            <div className="whitespace-pre-wrap">{msg.content}</div>
-                            
-                            {msg.role === "ASSISTANT" && msg.sourcesJson && (
-                              <div className="mt-3 pt-3 border-t border-gray-300">
-                                <div className="text-sm font-semibold mb-2">Uit bronnen:</div>
-                                {(() => {
-                                  try {
-                                    const sources = JSON.parse(msg.sourcesJson);
-                                    return (
-                                      <div className="space-y-2">
-                                        {sources.map((source: any, idx: number) => (
-                                          <div key={idx} className="text-sm">
-                                            <div className="mb-1">{source.text}</div>
-                                            {source.citations && source.citations.length > 0 && (
-                                              <div className="text-xs opacity-75">
-                                                Bronnen: {source.citations.map((c: any) => `Doc ${c.docId}`).join(", ")}
-                                              </div>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    );
-                                  } catch {
-                                    return null;
-                                  }
-                                })()}
-                              </div>
-                            )}
-                            
-                            {msg.role === "ASSISTANT" && msg.metaJson && (
-                              <div className="mt-3 pt-3 border-t border-gray-300">
-                                {(() => {
-                                  try {
-                                    const meta = JSON.parse(msg.metaJson);
-                                    return (
-                                      <>
-                                        {meta.additional_reasoning && meta.additional_reasoning.length > 0 && (
-                                          <div className="mb-3">
-                                            <div className="text-sm font-semibold mb-2">Aanvullend:</div>
-                                            <div className="space-y-1">
-                                              {meta.additional_reasoning.map((item: any, idx: number) => (
-                                                <div key={idx} className="text-sm opacity-90">
-                                                  {item.text || item}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                        {meta.missing_info_questions && meta.missing_info_questions.length > 0 && (
-                                          <div>
-                                            <div className="text-sm font-semibold mb-2">Mogelijke vragen:</div>
-                                            <ul className="list-disc list-inside space-y-1">
-                                              {meta.missing_info_questions.map((q: string, idx: number) => (
-                                                <li key={idx} className="text-sm opacity-90">
-                                                  {q}
-                                                </li>
-                                              ))}
-                                            </ul>
-                                          </div>
-                                        )}
-                                      </>
-                                    );
-                                  } catch {
-                                    return null;
-                                  }
-                                })()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
-                    <div ref={messagesEndRef} />
-                  </div>
-
-                  {/* Input Area */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      placeholder="Type je bericht..."
-                      disabled={sending}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                    />
-                    <button
-                      onClick={handleSendMessage}
-                      disabled={sending || !messageInput.trim()}
-                      className="bg-primary text-white px-6 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                    >
-                      {sending ? "Verzenden..." : "Verstuur"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "linkedin" && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              LinkedIn thought → post
-            </h2>
-            {linkedinError && (
-              <div className="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded">
-                {linkedinError}
-              </div>
-            )}
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Thought
-                </label>
-                <textarea
-                  value={thought}
-                  onChange={(e) => setThought(e.target.value)}
-                  rows={4}
-                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                  placeholder="Vertel in je eigen woorden waar de post over moet gaan..."
-                  disabled={linkedinLoading}
-                />
-              </div>
-              <div className="flex items-center justify-between gap-4">
+          <div className="mt-6">
+            {/* LinkedIn Tab */}
+            {activeTab === "linkedin" && (
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Lengte
-                  </label>
-                  <select
-                    value={lengthMode}
-                    onChange={(e) =>
-                      setLengthMode(e.target.value as "short" | "medium" | "long")
-                    }
-                    disabled={linkedinLoading}
-                    className="text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                  >
-                    <option value="short">Kort</option>
-                    <option value="medium">Middel</option>
-                    <option value="long">Lang</option>
-                  </select>
+                  <h2 className="text-base font-medium text-zinc-900 mb-4">
+                    LinkedIn thought → post
+                  </h2>
+                  {linkedinError && (
+                    <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                      {linkedinError}
+                    </div>
+                  )}
+                  <div className="space-y-4">
+                    <Textarea
+                      label="Thought"
+                      value={thought}
+                      onChange={(e) => setThought(e.target.value)}
+                      rows={4}
+                      placeholder="Vertel in je eigen woorden waar de post over moet gaan..."
+                      disabled={linkedinLoading}
+                    />
+                    <div className="flex items-end justify-between gap-4">
+                      <div className="flex-1 max-w-xs">
+                        <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                          Lengte
+                        </label>
+                        <select
+                          value={lengthMode}
+                          onChange={(e) =>
+                            setLengthMode(e.target.value as "short" | "medium" | "long")
+                          }
+                          disabled={linkedinLoading}
+                          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="short">Kort</option>
+                          <option value="medium">Middel</option>
+                          <option value="long">Lang</option>
+                        </select>
+                      </div>
+                      <Button
+                        onClick={handleGenerateLinkedin}
+                        disabled={linkedinLoading || thought.trim().length < 10}
+                        variant="primary"
+                        size="md"
+                      >
+                        {linkedinLoading ? "Genereren..." : "Generate LinkedIn post"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleGenerateLinkedin}
-                  disabled={linkedinLoading || thought.trim().length < 10}
-                  className="ml-auto bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                >
-                  {linkedinLoading ? "Genereren..." : "Generate LinkedIn post"}
-                </button>
-              </div>
-            </div>
 
-            {linkedinContent && (
-              <div className="mt-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                  Gegenereerde post
-                </h3>
-                <div className="whitespace-pre-wrap text-sm text-gray-900 mb-2">
-                  {linkedinContent}
+                {linkedinContent && (
+                  <div className="mt-6 pt-6 border-t border-zinc-200">
+                    <h3 className="text-sm font-medium text-zinc-900 mb-3">
+                      Gegenereerde post
+                    </h3>
+                    <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                      <div className="whitespace-pre-wrap text-sm text-zinc-900 leading-relaxed">
+                        {linkedinContent}
+                      </div>
+                    </div>
+                    {linkedinOutputId && (
+                      <OutputFeedback
+                        outputId={linkedinOutputId}
+                        onSubmitted={(r) =>
+                          setLinkedinProfileVersion(r.newProfileVersion)
+                        }
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Blog Tab */}
+            {activeTab === "blog" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-base font-medium text-zinc-900 mb-4">
+                    Blog thought → artikel
+                  </h2>
+                  {blogError && (
+                    <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                      {blogError}
+                    </div>
+                  )}
+                  <div className="space-y-4">
+                    <Textarea
+                      label="Thought"
+                      value={blogThought}
+                      onChange={(e) => setBlogThought(e.target.value)}
+                      rows={4}
+                      placeholder="Vertel in je eigen woorden waar het blogartikel over moet gaan..."
+                      disabled={blogLoading}
+                    />
+                    <div className="flex items-end justify-between gap-4">
+                      <div className="flex-1 max-w-xs">
+                        <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                          Lengte
+                        </label>
+                        <select
+                          value={blogLengthMode}
+                          onChange={(e) =>
+                            setBlogLengthMode(e.target.value as "short" | "medium" | "long")
+                          }
+                          disabled={blogLoading}
+                          className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <option value="short">Kort (400+ woorden)</option>
+                          <option value="medium">Middel (800+ woorden)</option>
+                          <option value="long">Lang (1200+ woorden)</option>
+                        </select>
+                      </div>
+                      <Button
+                        onClick={handleGenerateBlog}
+                        disabled={blogLoading || blogThought.trim().length < 10}
+                        variant="primary"
+                        size="md"
+                      >
+                        {blogLoading ? "Genereren..." : "Generate blog artikel"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                {linkedinOutputId && (
-                  <OutputFeedback
-                    outputId={linkedinOutputId}
-                    onSubmitted={(r) =>
-                      setLinkedinProfileVersion(r.newProfileVersion)
-                    }
-                  />
+
+                {blogContent && (
+                  <div className="mt-6 pt-6 border-t border-zinc-200">
+                    <h3 className="text-sm font-medium text-zinc-900 mb-3">
+                      Gegenereerd artikel
+                    </h3>
+                    <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
+                      <div className="whitespace-pre-wrap text-sm text-zinc-900 leading-relaxed">
+                        {blogContent}
+                      </div>
+                    </div>
+                    {blogOutputId && (
+                      <OutputFeedback
+                        outputId={blogOutputId}
+                        onSubmitted={(r) =>
+                          setBlogProfileVersion(r.newProfileVersion)
+                        }
+                      />
+                    )}
+                  </div>
                 )}
               </div>
             )}
           </div>
-        )}
-
+        </Card>
       </div>
-    </div>
+    </AppShell>
   );
 }
-

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { UserAgent, RunLog } from "@prisma/client";
 import { AgentTemplate } from "@prisma/client";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 
 interface UserAgentWithTemplate extends UserAgent {
   agentTemplate: {
@@ -180,31 +183,22 @@ export default function DashboardContent({
     },
   ];
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeVariant = (status: string): "default" | "subtle" => {
     switch (status.toLowerCase()) {
       case "active":
-        return "bg-green-100 text-green-800";
-      case "inactive":
-        return "bg-gray-100 text-gray-800";
-      case "incomplete":
-        return "bg-yellow-100 text-yellow-800";
+        return "default";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "subtle";
     }
   };
 
-  const getRunLogStatusColor = (status: string) => {
+  const getRunLogStatusVariant = (status: string): "default" | "subtle" => {
     switch (status.toLowerCase()) {
-      case "queued":
-        return "bg-gray-100 text-gray-800";
       case "running":
-        return "bg-blue-100 text-blue-800";
       case "success":
-        return "bg-green-100 text-green-800";
-      case "failed":
-        return "bg-red-100 text-red-800";
+        return "default";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "subtle";
     }
   };
 
@@ -231,20 +225,20 @@ export default function DashboardContent({
   return (
     <div className="space-y-6">
       {/* Welkom blok */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Welkom, {userName}!</h1>
-        <p className="text-gray-600">
+      <Card>
+        <h1 className="text-2xl font-semibold text-zinc-900 mb-2">Welkom, {userName}!</h1>
+        <p className="text-sm text-zinc-600">
           Dit is je dashboard waar je een overzicht hebt van je geactiveerde agents en recente
           activiteit.
         </p>
-      </div>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Linker kolom - Onboarding & Actieve agents */}
         <div className="lg:col-span-2 space-y-6">
           {/* Onboarding checklist */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Onboarding checklist</h2>
+          <Card>
+            <h2 className="text-base font-medium text-zinc-900 mb-4">Onboarding checklist</h2>
             <div className="space-y-3">
               {onboardingItems.map((item) => (
                 <div key={item.id} className="flex items-center">
@@ -252,127 +246,117 @@ export default function DashboardContent({
                     type="checkbox"
                     checked={item.completed}
                     readOnly
-                    className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    className="h-4 w-4 text-zinc-900 focus:ring-0 border-zinc-300 rounded"
                   />
-                  <label className="ml-3 text-sm text-gray-700">{item.text}</label>
+                  <label className="ml-3 text-sm text-zinc-700">{item.text}</label>
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* Mijn actieve agents */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Mijn actieve agents</h2>
+          <Card>
+            <h2 className="text-base font-medium text-zinc-900 mb-4">Mijn actieve agents</h2>
             {userAgents.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">Je hebt nog geen agents geactiveerd.</p>
-                <Link
-                  href="/agents"
-                  className="inline-block bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors"
-                >
-                  Bekijk agents catalogus
+                <p className="text-sm text-zinc-600 mb-4">Je hebt nog geen agents geactiveerd.</p>
+                <Link href="/agents">
+                  <Button variant="primary" size="md">
+                    Bekijk agents catalogus
+                  </Button>
                 </Link>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {userAgents.map((userAgent) => (
-                  <div
-                    key={userAgent.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
+                  <Card key={userAgent.id} className="hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{userAgent.name}</h3>
-                        <p className="text-sm text-gray-500 mt-1">
+                        <h3 className="font-medium text-zinc-900">{userAgent.name}</h3>
+                        <p className="text-sm text-zinc-600 mt-1">
                           {userAgent.agentTemplate.name}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-400">ID: {userAgent.id}</span>
+                          <span className="text-xs text-zinc-500">ID: {userAgent.id}</span>
                           <button
                             onClick={() => handleCopyId(userAgent.id)}
-                            className="text-xs text-gray-500 hover:text-gray-700 px-1.5 py-0.5 rounded hover:bg-gray-100 transition-colors"
+                            className="text-xs text-zinc-600 hover:text-zinc-900 px-1.5 py-0.5 rounded-xl hover:bg-zinc-50 transition-colors"
                             title="Copy ID"
                           >
                             {copiedId === userAgent.id ? "✓ Copied" : "Copy"}
                           </button>
                         </div>
                       </div>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${getStatusBadgeColor(
-                          userAgent.status
-                        )}`}
-                      >
+                      <Badge variant={getStatusBadgeVariant(userAgent.status)}>
                         {userAgent.status}
-                      </span>
+                      </Badge>
                     </div>
                     <div className="mt-4 space-y-2">
                       <div className="flex gap-2">
-                        <button
+                        <Button
                           onClick={() => handleRunAgent(userAgent.id)}
                           disabled={runningAgents.has(userAgent.id)}
-                          className="flex-1 text-center text-sm bg-primary text-white px-3 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="primary"
+                          size="sm"
+                          className="flex-1"
                         >
                           {runningAgents.has(userAgent.id) ? "Bezig..." : "Run"}
-                        </button>
-                        <Link
-                          href={`/agents/${userAgent.agentTemplate.slug}`}
-                          className="flex-1 text-center text-sm bg-gray-100 text-gray-700 px-3 py-2 rounded-md hover:bg-gray-200 transition-colors"
-                        >
-                          Ga naar detail
+                        </Button>
+                        <Link href={`/agents/${userAgent.agentTemplate.slug}`} className="flex-1">
+                          <Button variant="default" size="sm" className="w-full">
+                            Ga naar detail
+                          </Button>
                         </Link>
                       </div>
                       {errorMessages[userAgent.id] && (
-                        <p className="text-xs text-red-600">{errorMessages[userAgent.id]}</p>
+                        <p className="text-xs text-zinc-600">{errorMessages[userAgent.id]}</p>
                       )}
                     </div>
-                  </div>
+                  </Card>
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
 
         {/* Rechter kolom - Recente activiteit */}
         <div className="lg:col-span-1">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Recente activiteit</h2>
+          <Card>
+            <h2 className="text-base font-medium text-zinc-900 mb-4">Recente activiteit</h2>
             {runLogs.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-gray-500">Nog geen activiteit</p>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-sm text-zinc-600">Nog geen activiteit</p>
+                <p className="text-xs text-zinc-500 mt-2">
                   Run logs verschijnen hier zodra je agents actief zijn
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 {runLogs.map((log) => (
-                  <div key={log.id} className="border-b border-gray-100 pb-4 last:border-0">
+                  <div key={log.id} className="border-b border-zinc-200 pb-4 last:border-0">
                     <div className="flex items-start justify-between mb-1">
-                      <span className="text-xs text-gray-500">{formatDate(log.createdAt)}</span>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${getRunLogStatusColor(
-                          log.status
-                        )}`}
-                      >
+                      <span className="text-xs text-zinc-500">{formatDate(log.createdAt)}</span>
+                      <Badge variant={getRunLogStatusVariant(log.status)}>
                         {log.status}
-                      </span>
+                      </Badge>
                     </div>
-                    <p className="text-sm font-medium text-gray-900 mt-1">
+                    <p className="text-sm font-medium text-zinc-900 mt-1">
                       {log.userAgent.name}
                     </p>
-                    <p className="text-sm text-gray-600 mt-1">{log.summary}</p>
+                    <p className="text-sm text-zinc-600 mt-1">{log.summary}</p>
                     {/* Developer-only simulate button for running runs */}
                     {isDevelopment && log.status === "running" && (
                       <div className="mt-2">
-                        <button
+                        <Button
                           onClick={() => handleSimulateSuccess(log.id)}
                           disabled={simulatingRuns.has(log.id)}
-                          className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded hover:bg-yellow-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          variant="ghost"
+                          size="sm"
                         >
                           {simulatingRuns.has(log.id) ? "Simulating..." : "Simulate Success"}
-                        </button>
+                        </Button>
                         {simulationErrors[log.id] && (
-                          <p className="text-xs text-red-600 mt-1">{simulationErrors[log.id]}</p>
+                          <p className="text-xs text-zinc-600 mt-1">{simulationErrors[log.id]}</p>
                         )}
                       </div>
                     )}
@@ -380,7 +364,7 @@ export default function DashboardContent({
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
     </div>

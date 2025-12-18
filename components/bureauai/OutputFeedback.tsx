@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { submitFeedback } from "@/lib/bureauai/client";
+import { Button } from "@/components/ui/Button";
+import { Textarea } from "@/components/ui/Textarea";
+import { Card } from "@/components/ui/Card";
 
 type OutputFeedbackProps = {
   outputId: string;
@@ -60,45 +63,41 @@ export function OutputFeedback({
   };
 
   return (
-    <div className="mt-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-900">
+    <Card className="mt-6" padding="md">
+      <div className="mb-4">
+        <h3 className="text-sm font-medium text-zinc-900 mb-4">
           Feedback op deze output
         </h3>
-      </div>
 
-      <div className="flex items-center gap-2 mb-3">
-        <span className="text-sm text-gray-700">Beoordeling:</span>
-        <div className="flex gap-1">
-          {[1, 2, 3, 4, 5].map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => {
-                if (!loading) {
-                  setRating(value);
-                  setSubmitted(false);
-                  setSuccessMessage(null);
-                }
-              }}
-              className={`px-2 py-1 text-xs rounded border ${
-                rating === value
-                  ? "bg-primary text-white border-primary"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              disabled={loading}
-            >
-              {value}
-            </button>
-          ))}
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-sm text-zinc-700">Beoordeling:</span>
+          <div className="flex gap-1.5">
+            {[1, 2, 3, 4, 5].map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => {
+                  if (!loading) {
+                    setRating(value);
+                    setSubmitted(false);
+                    setSuccessMessage(null);
+                  }
+                }}
+                className={`px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors ${
+                  rating === value
+                    ? "bg-zinc-900 text-white border-zinc-900"
+                    : "bg-white text-zinc-700 border-zinc-300 hover:bg-zinc-50"
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                disabled={loading}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="mb-3">
-        <label className="block text-xs font-medium text-gray-700 mb-1">
-          Opmerking (optioneel)
-        </label>
-        <textarea
+        <Textarea
+          label="Opmerking (optioneel)"
           value={notes}
           onChange={(e) => {
             setNotes(e.target.value);
@@ -106,36 +105,35 @@ export function OutputFeedback({
             setSuccessMessage(null);
           }}
           rows={3}
-          className="w-full text-sm px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           placeholder="Bijv. 'te salesy', 'klinkt als ik', 'te formeel'..."
           disabled={loading}
         />
       </div>
 
       {errorMessage && (
-        <div className="mb-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1">
+        <div className="mb-4 p-3 text-xs text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
           <div>{errorMessage}</div>
-          {errorAction && <div className="mt-1 text-[11px]">{errorAction}</div>}
+          {errorAction && <div className="mt-1.5 text-[11px] text-zinc-600">{errorAction}</div>}
         </div>
       )}
 
       {successMessage && (
-        <div className="mb-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-2 py-1">
+        <div className="mb-4 p-3 text-xs text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
           {successMessage}
         </div>
       )}
 
       <div className="flex justify-end">
-        <button
-          type="button"
+        <Button
           onClick={handleSubmit}
           disabled={loading || !rating || submitted}
-          className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-800 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          variant="primary"
+          size="md"
         >
           {submitted ? "Opgeslagen" : loading ? "Opslaan..." : "Feedback versturen"}
-        </button>
+        </Button>
       </div>
-    </div>
+    </Card>
   );
 }
 

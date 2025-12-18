@@ -8,6 +8,7 @@ import LogoutButton from "./LogoutButton";
 const navigationItems = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "Projects", href: "/projects" },
+  { name: "Bureau-AI", href: "/bureau-ai" },
   { name: "Data Hub", href: "/data" },
   { name: "Agents", href: "/agents" },
   { name: "Workflows", href: "/workflows" },
@@ -49,12 +50,12 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200">
+    <nav className="bg-white border-b border-zinc-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex">
             <div className="flex-shrink-0 flex items-center">
-              <Link href="/dashboard" className="text-xl font-bold text-primary">
+              <Link href="/dashboard" className="text-xl font-semibold text-zinc-900">
                 Bureau-AI
               </Link>
             </div>
@@ -67,8 +68,8 @@ export default function Navigation() {
                     href={item.href}
                     className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? "border-primary text-gray-900"
-                        : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
+                        ? "border-zinc-900 text-zinc-900"
+                        : "border-transparent text-zinc-600 hover:border-zinc-300 hover:text-zinc-900"
                     }`}
                   >
                     {item.name}
@@ -84,7 +85,7 @@ export default function Navigation() {
                 <button
                   type="button"
                   onClick={() => setProjectDropdownOpen(!projectDropdownOpen)}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                  className="inline-flex items-center px-3 py-2 border border-zinc-300 rounded-xl text-sm font-medium text-zinc-700 bg-white hover:bg-zinc-50 focus:outline-none focus:ring-0 focus:border-zinc-400"
                 >
                   <span className="mr-2">Projects</span>
                   <svg
@@ -109,15 +110,15 @@ export default function Navigation() {
                       className="fixed inset-0 z-10"
                       onClick={() => setProjectDropdownOpen(false)}
                     />
-                    <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-20">
+                    <div className="absolute right-0 mt-2 w-56 rounded-2xl shadow-sm bg-white border border-zinc-200 z-20">
                       <div className="py-1">
                         <Link
                           href="/projects"
                           onClick={() => setProjectDropdownOpen(false)}
                           className={`block px-4 py-2 text-sm ${
                             pathname === "/projects"
-                              ? "bg-primary-50 text-primary font-medium"
-                              : "text-gray-700 hover:bg-gray-100"
+                              ? "bg-zinc-100 text-zinc-900 font-medium"
+                              : "text-zinc-700 hover:bg-zinc-50"
                           }`}
                         >
                           All Projects
@@ -129,8 +130,8 @@ export default function Navigation() {
                             onClick={() => setProjectDropdownOpen(false)}
                             className={`block px-4 py-2 text-sm ${
                               pathname === `/projects/${project.id}`
-                                ? "bg-primary-50 text-primary font-medium"
-                                : "text-gray-700 hover:bg-gray-100"
+                                ? "bg-zinc-100 text-zinc-900 font-medium"
+                                : "text-zinc-700 hover:bg-zinc-50"
                             }`}
                           >
                             {project.name}
@@ -148,7 +149,7 @@ export default function Navigation() {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
+              className="sm:hidden inline-flex items-center justify-center p-2 rounded-xl text-zinc-500 hover:text-zinc-700 hover:bg-zinc-50 focus:outline-none focus:ring-0"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <span className="sr-only">Open main menu</span>
@@ -168,7 +169,7 @@ export default function Navigation() {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <div className="sm:hidden">
+        <div className="sm:hidden border-t border-zinc-200">
           <div className="pt-2 pb-3 space-y-1">
             {navigationItems.map((item) => {
               const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
@@ -179,8 +180,8 @@ export default function Navigation() {
                   onClick={() => setMobileMenuOpen(false)}
                   className={`block pl-3 pr-4 py-2 border-l-4 text-base font-medium ${
                     isActive
-                      ? "bg-primary-50 border-primary text-primary"
-                      : "border-transparent text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700"
+                      ? "bg-zinc-100 border-zinc-900 text-zinc-900"
+                      : "border-transparent text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 hover:text-zinc-900"
                   }`}
                 >
                   {item.name}

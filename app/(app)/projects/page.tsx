@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { Badge } from "@/components/ui/Badge";
 
 interface Project {
   id: string;
@@ -85,141 +90,132 @@ export default function ProjectsPage() {
 
   if (loading) {
     return (
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">Projects</h1>
-        <p className="text-gray-600">Loading projects...</p>
+      <div className="space-y-4">
+        <div className="h-8 w-64 bg-zinc-200 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <div className="h-32 bg-zinc-100 rounded-xl animate-pulse" />
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-semibold text-zinc-900 mb-1">Projects</h1>
+          <p className="text-sm text-zinc-600">
             Manage your projects and organize your work
           </p>
         </div>
         {!showCreateForm && (
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors text-sm font-medium"
-          >
+          <Button onClick={() => setShowCreateForm(true)} variant="primary" size="md">
             Create Project
-          </button>
+          </Button>
         )}
       </div>
 
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md text-red-800">
-          {error}
-        </div>
+        <Card>
+          <div className="p-4 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+            {error}
+          </div>
+        </Card>
       )}
 
       {showCreateForm && (
-        <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+        <Card>
+          <h2 className="text-base font-medium text-zinc-900 mb-4">
             Create New Project
           </h2>
           <form onSubmit={handleCreateProject}>
             <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="projectName"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Project Name *
-                </label>
-                <input
-                  type="text"
-                  id="projectName"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Enter project name"
-                  required
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="projectDescription"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Description (optional)
-                </label>
-                <textarea
-                  id="projectDescription"
-                  value={newProjectDescription}
-                  onChange={(e) => setNewProjectDescription(e.target.value)}
-                  rows={3}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  placeholder="Enter project description"
-                />
-              </div>
+              <Input
+                label="Project Name *"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="Enter project name"
+                required
+              />
+              <Textarea
+                label="Description (optional)"
+                value={newProjectDescription}
+                onChange={(e) => setNewProjectDescription(e.target.value)}
+                rows={3}
+                placeholder="Enter project description"
+              />
             </div>
-            <div className="flex justify-end space-x-3 mt-4">
-              <button
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
                 type="button"
                 onClick={() => {
                   setShowCreateForm(false);
                   setNewProjectName("");
                   setNewProjectDescription("");
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
+                variant="default"
+                size="md"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 disabled={isCreating || !newProjectName.trim()}
-                className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                variant="primary"
+                size="md"
               >
                 {isCreating ? "Creating..." : "Create Project"}
-              </button>
+              </Button>
             </div>
           </form>
-        </div>
+        </Card>
       )}
 
       {projects.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-          <p className="text-gray-500 mb-4">No projects yet.</p>
-          {!showCreateForm && (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors text-sm font-medium"
-            >
-              Create your first project
-            </button>
-          )}
-        </div>
+        <Card>
+          <div className="p-12 text-center">
+            <p className="text-zinc-600 mb-4">No projects yet.</p>
+            {!showCreateForm && (
+              <Button
+                onClick={() => setShowCreateForm(true)}
+                variant="primary"
+                size="md"
+              >
+                Create your first project
+              </Button>
+            )}
+          </div>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
             <Link
               key={project.id}
               href={`/projects/${project.id}`}
-              className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow block"
+              className="block"
             >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {project.name}
-              </h3>
-              {project.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                  {project.description}
-                </p>
-              )}
-              <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>
-                  Created {new Date(project.createdAt).toLocaleDateString()}
-                </span>
-                {project.settings?.useGlobalLibrary && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded">
-                    Global Library
-                  </span>
+              <Card className="hover:shadow-md transition-shadow">
+                <h3 className="text-base font-medium text-zinc-900 mb-2">
+                  {project.name}
+                </h3>
+                {project.description && (
+                  <p className="text-sm text-zinc-600 mb-4 line-clamp-2">
+                    {project.description}
+                  </p>
                 )}
-              </div>
+                <div className="flex items-center justify-between text-xs text-zinc-500">
+                  <span>
+                    Created {new Date(project.createdAt).toLocaleDateString()}
+                  </span>
+                  {project.settings?.useGlobalLibrary && (
+                    <Badge variant="subtle">Global Library</Badge>
+                  )}
+                </div>
+              </Card>
             </Link>
           ))}
         </div>
@@ -227,4 +223,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-
