@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import DashboardContent from "@/components/DashboardContent";
 import { getOrCreateWorkspace } from "@/lib/workspace";
+import { FOUNDATIONS_KEYS } from "@/lib/bureauai/foundations";
+import { listFoundationAnswers } from "@/lib/bureauai/repo";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -15,19 +17,40 @@ export default async function DashboardPage() {
   // Zorg dat er altijd een workspace bestaat voor deze gebruiker
   const workspace = await getOrCreateWorkspace(session.user.id);
 
-  const workspaceContext = await prisma.workspaceContext.findUnique({
-    where: {
+  // Check Bureau-AI profile completion
+  // Een gebruiker heeft zijn profiel voltooid als:
+  // 1. Er een ProfileCard bestaat (workspace-level), OF
+  // 2. Alle foundation questions zijn beantwoord
+  const [profileCard, foundationAnswers] = await Promise.all([
+    prisma.profileCard.findFirst({
+      where: {
+        workspaceId: workspace.id,
+        projectId: null,
+      },
+      orderBy: {
+        version: "desc",
+      },
+      select: {
+        id: true,
+      },
+    }),
+    listFoundationAnswers({
       workspaceId: workspace.id,
-    },
-  });
+      projectId: null,
+    }),
+  ]);
 
-  if (
-    !workspaceContext ||
-    (workspaceContext.profileJson === "{}" &&
-      workspaceContext.goalsJson === "{}" &&
-      workspaceContext.preferencesJson === "{}")
-  ) {
-    redirect("/onboarding");
+  const answeredKeys = new Set(
+    foundationAnswers.map((a: { questionKey: string }) => a.questionKey)
+  );
+  const allFoundationsAnswered = FOUNDATIONS_KEYS.every((key) =>
+    answeredKeys.has(key)
+  );
+
+  // Als er geen ProfileCard is EN niet alle foundation questions zijn beantwoord,
+  // stuur de gebruiker naar Bureau-AI om hun profiel in te vullen
+  if (!profileCard && !allFoundationsAnswered) {
+    redirect("/bureau-ai");
   }
 
   // Haal UserAgents op voor deze gebruiker

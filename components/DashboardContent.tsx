@@ -262,7 +262,7 @@ export default function DashboardContent({
                 <p className="text-sm text-zinc-600 mb-4">Je hebt nog geen agents geactiveerd.</p>
                 <Link href="/agents">
                   <Button variant="primary" size="md">
-                    Bekijk agents catalogus
+                  Bekijk agents catalogus
                   </Button>
                 </Link>
               </div>
@@ -304,7 +304,7 @@ export default function DashboardContent({
                         </Button>
                         <Link href={`/agents/${userAgent.agentTemplate.slug}`} className="flex-1">
                           <Button variant="default" size="sm" className="w-full">
-                            Ga naar detail
+                          Ga naar detail
                           </Button>
                         </Link>
                       </div>
