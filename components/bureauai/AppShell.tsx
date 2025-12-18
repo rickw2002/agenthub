@@ -11,9 +11,12 @@ interface AppShellProps {
 }
 
 const sidebarItems = [
-  { name: "Projects", href: "/projects" },
+  { name: "Bureau-AI", href: "/bureau-ai" },
+  { name: "Data Hub", href: "/data" },
   { name: "Library", href: "/library" },
-  { name: "Settings", href: "/account" },
+  { name: "Prompt Library", href: "/prompt-library" },
+  { name: "Support", href: "/support" },
+  { name: "Account", href: "/account" },
 ];
 
 export function AppShell({ children, title, description }: AppShellProps) {
