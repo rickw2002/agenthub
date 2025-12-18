@@ -6,6 +6,9 @@ import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,67 +53,58 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Inloggen</h1>
+    <Card>
+      <h1 className="text-2xl font-semibold text-zinc-900 mb-6">Inloggen</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
+          <div className="p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
             {success}
           </div>
         )}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <div className="p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
             {error}
           </div>
         )}
 
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="jouw@email.nl"
-          />
-        </div>
+        <Input
+          label="Email"
+          id="email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          placeholder="jouw@email.nl"
+        />
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-            Wachtwoord
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            placeholder="••••••••"
-          />
-        </div>
+        <Input
+          label="Wachtwoord"
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          placeholder="••••••••"
+        />
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-primary text-white py-2 px-4 rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          variant="primary"
+          size="lg"
+          className="w-full"
         >
           {loading ? "Inloggen..." : "Inloggen"}
-        </button>
+        </Button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-zinc-600">
         Nog geen account?{" "}
-        <Link href="/auth/register" className="text-primary hover:underline">
+        <Link href="/auth/register" className="text-zinc-900 hover:underline font-medium">
           Registreer hier
         </Link>
       </p>
-    </div>
+    </Card>
   );
 }
-

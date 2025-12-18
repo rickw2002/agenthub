@@ -12,6 +12,8 @@ import {
   evaluateBlogQuality,
 } from "@/lib/bureauai/quality/blogQualityGate";
 
+export const dynamic = "force-dynamic";
+
 type BlogGenerateRequest = {
   projectId?: string | null;
   thought?: string;

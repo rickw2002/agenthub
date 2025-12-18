@@ -5,6 +5,8 @@ import { getOrCreateWorkspace } from "@/lib/workspace";
 import { getCurrentOrgId } from "@/lib/organization";
 import { supabaseAdmin } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     const authError = await requireAuth();
