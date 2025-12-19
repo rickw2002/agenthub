@@ -165,7 +165,7 @@ export default function ChannelCard({ summary }: ChannelCardProps) {
       const intelBaseUrl = process.env.NEXT_PUBLIC_INTEL_BASE_URL;
       
       if (!intelBaseUrl) {
-        setError("Intel service URL missing. Please contact support.");
+        setError("Configuratie mist");
         return;
       }
 

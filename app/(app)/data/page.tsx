@@ -5,7 +5,8 @@ import DataHubContent from "@/components/DataHubContent";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateWorkspace } from "@/lib/workspace";
 
-const PROVIDERS = ["GOOGLE_ADS", "GOOGLE_ANALYTICS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
+// UI providers only - GOOGLE_ADS removed from UI (backend still supports it)
+const PROVIDERS = ["GOOGLE_ANALYTICS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
 
 export default async function DataHubPage() {
   const session = await getServerSession(authOptions);
