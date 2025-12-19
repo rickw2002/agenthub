@@ -15,7 +15,11 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "deploy:check": "bash scripts/deploy-check.sh",
-    "deploy:secrets": "node scripts/generate-secrets.js"
+    "deploy:secrets": "node scripts/generate-secrets.js",
+    "backup:mvp": "powershell -ExecutionPolicy Bypass -File scripts/backup-mvp.ps1",
+    "datahub:backfill-workspace": "tsx scripts/backfill-datahub-workspace.ts",
+    "datahub:check-workspace": "tsx scripts/check-datahub-workspace-null.ts",
+    "intel:dev": "cd services/intel && .venv\\Scripts\\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8001"
   },
   "dependencies": {
     "@prisma/client": "^5.19.0",
