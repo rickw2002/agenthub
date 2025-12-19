@@ -1,9 +1,8 @@
 import Link from "next/link";
 
 const navigation = [
-  { name: "Functies", href: "#features" },
+  { name: "Hoe het werkt", href: "#features" },
   { name: "Agents", href: "/agents" },
-  { name: "Prijzen", href: "#pricing" },
 ];
 
 export default function Home() {
@@ -72,11 +71,13 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-4 grid gap-12 md:grid-cols-2 items-center">
             <div className="space-y-6">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-zinc-900">
-                Activeer AI-agents voor je bedrijf. Zonder complexiteit.
+                Je AI marketing specialist. In één dashboard.
               </h1>
               <p className="text-base sm:text-lg text-zinc-600">
-                Bureau-AI helpt MKB-bedrijven om AI-agents te activeren, runnen en beheren vanuit één
-                dashboard. Praktisch, overzichtelijk en gemaakt voor kleine teams.
+                Maak betere marketingkeuzes op basis van je eigen data — zonder marketingteam.
+              </p>
+              <p className="text-sm text-zinc-600">
+                Bureau-AI helpt kleine teams slimmere marketingbeslissingen te maken met AI-agents die analyseren, adviseren en helpen content te creëren. Geen drukke dashboards; duidelijke inzichten en acties.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <Link
@@ -92,43 +93,51 @@ export default function Home() {
                   Inloggen
                 </Link>
               </div>
+              <div className="pt-4 space-y-2 text-sm text-zinc-600">
+                <p>✔ Ontworpen voor MKB en solo-teams</p>
+                <p>✔ Geen marketingkennis of AI-ervaring nodig</p>
+                <p>✔ Alles AI-first, zonder complexiteit</p>
+              </div>
             </div>
 
             {/* Product preview mock */}
             <div className="bg-white border border-zinc-200 rounded-2xl shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-zinc-900">Bureau-AI overzicht</h2>
+                <h2 className="text-sm font-medium text-zinc-900">Eén overzicht. Alle marketingcontext.</h2>
                 <span className="text-xs text-zinc-500">Live demo</span>
               </div>
+              <p className="text-xs text-zinc-600">
+                Combineert LinkedIn content + ads + resultaten en geeft acties, niet alleen cijfers.
+              </p>
 
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
                   <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-1">
-                    Actieve agents
+                    LinkedIn posts
+                  </p>
+                  <p className="text-2xl font-semibold text-zinc-900">24</p>
+                  <p className="text-xs text-zinc-500 mt-1">Deze maand</p>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-1">
+                    Ad campagnes
+                  </p>
+                  <p className="text-2xl font-semibold text-zinc-900">8</p>
+                  <p className="text-xs text-zinc-500 mt-1">Actief</p>
+                </div>
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-1">
+                    Aanbevelingen
                   </p>
                   <p className="text-2xl font-semibold text-zinc-900">5</p>
-                  <p className="text-xs text-zinc-500 mt-1">Inbox, Sales, Marketing, Data</p>
-                </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-1">
-                    Recente runs
-                  </p>
-                  <p className="text-2xl font-semibold text-zinc-900">128</p>
-                  <p className="text-xs text-zinc-500 mt-1">Laatste 24 uur</p>
-                </div>
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide mb-1">
-                    Inzichten
-                  </p>
-                  <p className="text-2xl font-semibold text-zinc-900">12</p>
-                  <p className="text-xs text-zinc-500 mt-1">Actieve aanbevelingen</p>
+                  <p className="text-xs text-zinc-500 mt-1">Nieuwe acties</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs text-zinc-500">
-                  <span>Laatste activiteit</span>
-                  <span>Inbox AI-agent • 2 min geleden</span>
+                  <span>Laatste inzicht</span>
+                  <span>Marketing Agent • 2 min geleden</span>
                 </div>
                 <div className="h-1.5 w-full rounded-full bg-zinc-100 overflow-hidden">
                   <div className="h-full w-2/3 bg-zinc-900 rounded-full" />
@@ -138,39 +147,45 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Vertrouwen / betrouwbaarheid strip */}
-        <section className="py-10 bg-zinc-50">
-          <div className="max-w-6xl mx-auto px-4 grid gap-6 md:grid-cols-3">
-            {[
-              {
-                title: "Veilige authenticatie",
-                description: "Gebouwd op bewezen standaarden met versleutelde sessies.",
-              },
-              {
-                title: "Modulaire AI-agents",
-                description: "Activeer alleen de agents die jij nodig hebt voor je processen.",
-              },
-              {
-                title: "Gebouwd voor kleine teams",
-                description: "Geen data science team nodig. Start in een middag.",
-              },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4"
-              >
-                <div className="mt-1 h-2.5 w-2.5 rounded-full bg-zinc-900" />
-                <div>
+        {/* Agents section */}
+        <section className="py-12 md:py-16">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-xl font-semibold text-zinc-900 mb-3">AI-agents met een duidelijke rol</h2>
+            <p className="text-sm text-zinc-600 mb-8">
+              Elke agent heeft één taak: jou helpen betere marketingbeslissingen te maken.
+            </p>
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                {
+                  title: "Marketing Agent",
+                  description: "Analyseert campagnes, content en prestaties en geeft strategische aanbevelingen.",
+                },
+                {
+                  title: "Content Agent",
+                  description: "Helpt LinkedIn posts + blogs sneller te schrijven in jouw toon en stijl.",
+                },
+                {
+                  title: "Data Agent",
+                  description: "Verbindt ads/content/channel data en legt veranderingen in resultaten uit. (binnenkort)",
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="rounded-2xl border border-zinc-200 bg-white p-5 flex flex-col gap-2"
+                >
                   <h3 className="text-sm font-semibold text-zinc-900">{item.title}</h3>
-                  <p className="mt-1 text-sm text-zinc-600">{item.description}</p>
+                  <p className="text-sm text-zinc-600">{item.description}</p>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            <p className="mt-6 text-sm text-zinc-600 text-center">
+              Activeer alleen wat je nodig hebt.
+            </p>
           </div>
         </section>
 
         {/* Hoe het werkt */}
-        <section id="features" className="py-12 md:py-16">
+        <section id="features" className="py-12 md:py-16 bg-zinc-50">
           <div className="max-w-6xl mx-auto px-4">
             <h2 className="text-xl font-semibold text-zinc-900 mb-6">Hoe het werkt</h2>
             <div className="grid gap-6 md:grid-cols-3">
@@ -183,12 +198,12 @@ export default function Home() {
                 {
                   step: "Stap 2",
                   title: "Agents activeren",
-                  description: "Kies AI-agents uit de catalogus en stel ze in voor jouw use-cases.",
+                  description: "Verbind LinkedIn/content/campagne data en activeer de agents die je nodig hebt.",
                 },
                 {
                   step: "Stap 3",
-                  title: "Resultaten bekijken",
-                  description: "Volg runs, inzichten en resultaten vanuit één centrale plek.",
+                  title: "Beslissingen nemen",
+                  description: "Krijg inzichten, aanbevelingen en volgende stappen om betere marketingkeuzes te maken.",
                 },
               ].map((item) => (
                 <div
@@ -206,34 +221,35 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Feature teaser */}
-        <section id="pricing" className="py-12 bg-zinc-50">
+        {/* Why Bureau-AI */}
+        <section className="py-12 md:py-16">
           <div className="max-w-6xl mx-auto px-4">
-            <h2 className="text-xl font-semibold text-zinc-900 mb-6">Wat je krijgt met Bureau-AI</h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              {[
-                {
-                  title: "Agent catalogus",
-                  description: "Kies en activeer AI-agents per use-case, van inbox tot lead scoring.",
-                },
-                {
-                  title: "Runs & logs",
-                  description: "Volledig inzicht in elke agent-run, inclusief status en samenvatting.",
-                },
-                {
-                  title: "Data Hub (binnenkort)",
-                  description: "Alle data en context op één plek om agents slimmer te maken.",
-                },
-              ].map((item) => (
-                <div
-                  key={item.title}
-                  className="rounded-2xl border border-zinc-200 bg-white p-5 flex flex-col gap-2"
-                >
-                  <h3 className="text-sm font-semibold text-zinc-900">{item.title}</h3>
-                  <p className="text-sm text-zinc-600">{item.description}</p>
-                </div>
-              ))}
+            <h2 className="text-xl font-semibold text-zinc-900 mb-6">Waarom ondernemers voor Bureau-AI kiezen</h2>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-3">
+                <p className="text-sm text-zinc-600">✗ Geen losse tools of dashboards</p>
+                <p className="text-sm text-zinc-600">✗ Geen marketingbureau nodig</p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-sm text-zinc-600">✗ Geen complexe setup</p>
+                <p className="text-sm text-zinc-600">✗ Geen tijdverlies</p>
+              </div>
             </div>
+            <div className="mt-6 p-5 rounded-2xl border border-zinc-200 bg-zinc-50">
+              <p className="text-sm font-medium text-zinc-900">
+                Wel: focus, overzicht, betere beslissingen, meer tijd voor je bedrijf.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Support section */}
+        <section className="py-12 bg-zinc-50">
+          <div className="max-w-6xl mx-auto px-4">
+            <h2 className="text-xl font-semibold text-zinc-900 mb-3">AI waar het kan. Mens waar het nodig is.</h2>
+            <p className="text-sm text-zinc-600">
+              De meeste vragen worden direct opgepakt door AI-support. Kom je er niet uit? Dan is er altijd een mens beschikbaar.
+            </p>
           </div>
         </section>
 
@@ -242,10 +258,10 @@ export default function Home() {
           <div className="max-w-6xl mx-auto px-4 bg-zinc-50 border border-zinc-200 rounded-2xl px-6 py-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
               <h2 className="text-xl md:text-2xl font-semibold text-zinc-900">
-                Klaar om AI praktisch in te zetten?
+                Klaar om je marketing slimmer aan te pakken?
               </h2>
               <p className="mt-2 text-sm text-zinc-700">
-                Start met een gratis account en activeer je eerste agent in enkele minuten.
+                Activeer je eerste AI-agent en ervaar hoe het is om met een AI marketing specialist te werken.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
@@ -253,7 +269,7 @@ export default function Home() {
                 href="/auth/register"
                 className="px-6 py-3 text-sm font-medium rounded-xl bg-zinc-900 text-white hover:bg-zinc-800 text-center transition-colors"
               >
-                Gratis registreren
+                Gratis account aanmaken
               </Link>
               <Link
                 href="/auth/login"

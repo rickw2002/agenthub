@@ -113,6 +113,13 @@ export default function BureauAIPage() {
   const handleGenerateLinkedin = async () => {
     if (!thought.trim() || linkedinLoading) return;
 
+    // Als er nog geen interview vragen zijn, genereer die eerst automatisch
+    if (!linkedinShowInterview || linkedinInterviewQuestions.length === 0) {
+      await handleInterviewLinkedin();
+      // Wacht even zodat de gebruiker de vragen kan zien
+      return;
+    }
+
     setLinkedinLoading(true);
     setLinkedinError(null);
     setLinkedinContent(null);
@@ -218,6 +225,13 @@ export default function BureauAIPage() {
 
   const handleGenerateBlog = async () => {
     if (!blogThought.trim() || blogLoading) return;
+
+    // Als er nog geen interview vragen zijn, genereer die eerst automatisch
+    if (!blogShowInterview || blogInterviewQuestions.length === 0) {
+      await handleInterviewBlog();
+      // Wacht even zodat de gebruiker de vragen kan zien
+      return;
+    }
 
     setBlogLoading(true);
     setBlogError(null);
@@ -609,10 +623,62 @@ export default function BureauAIPage() {
                         onChange={(e) => setThought(e.target.value)}
                         rows={4}
                         placeholder="Vertel in je eigen woorden waar de post over moet gaan..."
-                        disabled={linkedinLoading}
+                        disabled={linkedinLoading || linkedinInterviewLoading}
                       />
-                      <div className="flex items-end justify-between gap-4">
-                        <div className="flex-1 max-w-xs">
+                      
+                      {/* Interview vragen sectie */}
+                      {linkedinShowInterview && linkedinInterviewQuestions.length > 0 && (
+                        <div className="mt-4 p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-zinc-900">
+                              Verdiepingsvragen
+                            </h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setLinkedinShowInterview(false);
+                                setLinkedinInterviewAnswers({});
+                              }}
+                            >
+                              Sluiten
+                            </Button>
+                          </div>
+                          {linkedinInterviewQuestions.map((q) => (
+                            <div key={q.key} className="space-y-2">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-900 mb-1">
+                                  {q.question}
+                                </label>
+                                <p className="text-xs text-zinc-500 mb-2">
+                                  {q.intent}
+                                </p>
+                              </div>
+                              <Textarea
+                                value={linkedinInterviewAnswers[q.key] || ""}
+                                onChange={(e) =>
+                                  setLinkedinInterviewAnswers((prev) => ({
+                                    ...prev,
+                                    [q.key]: e.target.value,
+                                  }))
+                                }
+                                rows={2}
+                                placeholder="Je antwoord..."
+                                disabled={linkedinLoading}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {linkedinInterviewError && (
+                        <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                          {linkedinInterviewError}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
                           <label className="block text-sm font-medium text-zinc-900 mb-1.5">
                             Lengte
                           </label>
@@ -629,13 +695,46 @@ export default function BureauAIPage() {
                             <option value="long">Lang</option>
                           </select>
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                            Soort post (optioneel)
+                          </label>
+                          <select
+                            value={postType}
+                            onChange={(e) =>
+                              setPostType(e.target.value as "TOFU" | "MOFU" | "BOFU" | "")
+                            }
+                            disabled={linkedinLoading}
+                            className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <option value="">Geen</option>
+                            <option value="TOFU">TOFU (Top of Funnel)</option>
+                            <option value="MOFU">MOFU (Middle of Funnel)</option>
+                            <option value="BOFU">BOFU (Bottom of Funnel)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                            Funnel fase (optioneel)
+                          </label>
+                          <input
+                            type="text"
+                            value={funnelPhase}
+                            onChange={(e) => setFunnelPhase(e.target.value)}
+                            disabled={linkedinLoading}
+                            placeholder="Bijv. Awareness, Consideration..."
+                            className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-end gap-4">
                         <Button
                           onClick={handleGenerateLinkedin}
-                          disabled={linkedinLoading || thought.trim().length < 10}
+                          disabled={linkedinLoading || linkedinInterviewLoading || thought.trim().length < 10}
                           variant="primary"
                           size="md"
                         >
-                          {linkedinLoading ? "Genereren..." : "Werk uit"}
+                          {linkedinInterviewLoading ? "Vragen genereren..." : linkedinLoading ? "Genereren..." : "Werk uit"}
                         </Button>
                       </div>
                     </div>
@@ -1048,23 +1147,13 @@ export default function BureauAIPage() {
                         </div>
                       </div>
                       <div className="flex items-end justify-end gap-4">
-                        {!blogShowInterview && (
-                          <Button
-                            onClick={handleInterviewBlog}
-                            disabled={blogInterviewLoading || blogThought.trim().length < 10}
-                            variant="default"
-                            size="md"
-                          >
-                            {blogInterviewLoading ? "Vragen genereren..." : "Stel verdiepingsvragen"}
-                          </Button>
-                        )}
                         <Button
                           onClick={handleGenerateBlog}
-                          disabled={blogLoading || blogThought.trim().length < 10}
+                          disabled={blogLoading || blogInterviewLoading || blogThought.trim().length < 10}
                           variant="primary"
                           size="md"
                         >
-                          {blogLoading ? "Genereren..." : "Werk uit"}
+                          {blogInterviewLoading ? "Vragen genereren..." : blogLoading ? "Genereren..." : "Werk uit"}
                         </Button>
                       </div>
                     </div>
