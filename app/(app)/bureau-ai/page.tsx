@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/Input";
 import { OutputFeedback } from "@/components/bureauai/OutputFeedback";
 
 export default function BureauAIPage() {
-  // 3 hoofdmodi: Brainstorm, Thought to Post, Content Bank
-  const [activeMode, setActiveMode] = useState<"brainstorm" | "thought-to-post" | "content-bank">("thought-to-post");
-  
-  // Binnen Thought to Post: LinkedIn of Blog
+  // Hoofdmodi: LinkedIn of Blog
   const [activeChannel, setActiveChannel] = useState<"linkedin" | "blog">("linkedin");
+  
+  // Binnen elk channel: Brainstorm, Thought to Post, Content Bank
+  const [activeMode, setActiveMode] = useState<"brainstorm" | "thought-to-post" | "content-bank">("thought-to-post");
 
   // LinkedIn generator state
   const [thought, setThought] = useState("");
@@ -25,6 +25,13 @@ export default function BureauAIPage() {
   const [linkedinProfileVersion, setLinkedinProfileVersion] = useState<number | null>(null);
   const [linkedinLoading, setLinkedinLoading] = useState(false);
   const [linkedinError, setLinkedinError] = useState<string | null>(null);
+  
+  // Interview state (LinkedIn)
+  const [linkedinInterviewQuestions, setLinkedinInterviewQuestions] = useState<Array<{key: string; question: string; intent: string}>>([]);
+  const [linkedinInterviewAnswers, setLinkedinInterviewAnswers] = useState<Record<string, string>>({});
+  const [linkedinInterviewLoading, setLinkedinInterviewLoading] = useState(false);
+  const [linkedinInterviewError, setLinkedinInterviewError] = useState<string | null>(null);
+  const [linkedinShowInterview, setLinkedinShowInterview] = useState(false);
 
   // Blog generator state
   const [blogThought, setBlogThought] = useState("");
@@ -36,6 +43,13 @@ export default function BureauAIPage() {
   const [blogProfileVersion, setBlogProfileVersion] = useState<number | null>(null);
   const [blogLoading, setBlogLoading] = useState(false);
   const [blogError, setBlogError] = useState<string | null>(null);
+  
+  // Interview state (Blog)
+  const [blogInterviewQuestions, setBlogInterviewQuestions] = useState<Array<{key: string; question: string; intent: string}>>([]);
+  const [blogInterviewAnswers, setBlogInterviewAnswers] = useState<Record<string, string>>({});
+  const [blogInterviewLoading, setBlogInterviewLoading] = useState(false);
+  const [blogInterviewError, setBlogInterviewError] = useState<string | null>(null);
+  const [blogShowInterview, setBlogShowInterview] = useState(false);
 
   // Brainstorm state
   const [brainstormTopic, setBrainstormTopic] = useState("");
@@ -52,6 +66,50 @@ export default function BureauAIPage() {
   const [contentBankLoading, setContentBankLoading] = useState(false);
   const [contentBankError, setContentBankError] = useState<string | null>(null);
 
+  const handleInterviewLinkedin = async () => {
+    if (!thought.trim() || linkedinInterviewLoading) return;
+
+    setLinkedinInterviewLoading(true);
+    setLinkedinInterviewError(null);
+    setLinkedinInterviewQuestions([]);
+    setLinkedinInterviewAnswers({});
+
+    try {
+      const res = await fetch("/api/thought/interview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: null,
+          thought: thought.trim(),
+          channel: "linkedin",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        const message =
+          data?.message ||
+          "Er is iets misgegaan bij het genereren van interview vragen.";
+        const action = data?.action ? ` ${data.action}` : "";
+        throw new Error(message + action);
+      }
+
+      setLinkedinInterviewQuestions(data.questions ?? []);
+      setLinkedinShowInterview(true);
+    } catch (err) {
+      setLinkedinInterviewError(
+        err instanceof Error
+          ? err.message
+          : "Er is iets misgegaan bij het genereren van interview vragen."
+      );
+    } finally {
+      setLinkedinInterviewLoading(false);
+    }
+  };
+
   const handleGenerateLinkedin = async () => {
     if (!thought.trim() || linkedinLoading) return;
 
@@ -59,6 +117,22 @@ export default function BureauAIPage() {
     setLinkedinError(null);
     setLinkedinContent(null);
     setLinkedinOutputId(null);
+
+    // Combineer thought met interview antwoorden als die er zijn
+    let enrichedThought = thought.trim();
+    if (linkedinShowInterview && Object.keys(linkedinInterviewAnswers).length > 0) {
+      const answersText = Object.entries(linkedinInterviewAnswers)
+        .filter(([_, answer]) => answer.trim().length > 0)
+        .map(([key, answer]) => {
+          const question = linkedinInterviewQuestions.find((q) => q.key === key);
+          return `${question?.question || key}: ${answer}`;
+        })
+        .join("\n\n");
+      
+      if (answersText) {
+        enrichedThought = `${thought.trim()}\n\nAanvullende context:\n${answersText}`;
+      }
+    }
 
     try {
       const res = await fetch("/api/generate/linkedin", {
@@ -68,7 +142,7 @@ export default function BureauAIPage() {
         },
         body: JSON.stringify({
           projectId: null,
-          thought: thought.trim(),
+          thought: enrichedThought,
           length: lengthMode,
           postType: postType || undefined,
           funnelPhase: funnelPhase || undefined,
@@ -98,6 +172,50 @@ export default function BureauAIPage() {
     }
   };
 
+  const handleInterviewBlog = async () => {
+    if (!blogThought.trim() || blogInterviewLoading) return;
+
+    setBlogInterviewLoading(true);
+    setBlogInterviewError(null);
+    setBlogInterviewQuestions([]);
+    setBlogInterviewAnswers({});
+
+    try {
+      const res = await fetch("/api/thought/interview", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId: null,
+          thought: blogThought.trim(),
+          channel: "blog",
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.ok) {
+        const message =
+          data?.message ||
+          "Er is iets misgegaan bij het genereren van interview vragen.";
+        const action = data?.action ? ` ${data.action}` : "";
+        throw new Error(message + action);
+      }
+
+      setBlogInterviewQuestions(data.questions ?? []);
+      setBlogShowInterview(true);
+    } catch (err) {
+      setBlogInterviewError(
+        err instanceof Error
+          ? err.message
+          : "Er is iets misgegaan bij het genereren van interview vragen."
+      );
+    } finally {
+      setBlogInterviewLoading(false);
+    }
+  };
+
   const handleGenerateBlog = async () => {
     if (!blogThought.trim() || blogLoading) return;
 
@@ -105,6 +223,22 @@ export default function BureauAIPage() {
     setBlogError(null);
     setBlogContent(null);
     setBlogOutputId(null);
+
+    // Combineer thought met interview antwoorden als die er zijn
+    let enrichedThought = blogThought.trim();
+    if (blogShowInterview && Object.keys(blogInterviewAnswers).length > 0) {
+      const answersText = Object.entries(blogInterviewAnswers)
+        .filter(([_, answer]) => answer.trim().length > 0)
+        .map(([key, answer]) => {
+          const question = blogInterviewQuestions.find((q) => q.key === key);
+          return `${question?.question || key}: ${answer}`;
+        })
+        .join("\n\n");
+      
+      if (answersText) {
+        enrichedThought = `${blogThought.trim()}\n\nAanvullende context:\n${answersText}`;
+      }
+    }
 
     try {
       const res = await fetch("/api/generate/blog", {
@@ -114,7 +248,7 @@ export default function BureauAIPage() {
         },
         body: JSON.stringify({
           projectId: null,
-          thought: blogThought.trim(),
+          thought: enrichedThought,
           length: blogLengthMode,
           postType: blogPostType || undefined,
           funnelPhase: blogFunnelPhase || undefined,
@@ -144,25 +278,25 @@ export default function BureauAIPage() {
     }
   };
 
-  // Hoofdmodi tabs
-  const mainModeTabs = [
+  // Hoofdmodi tabs: LinkedIn of Blog
+  const channelTabs = [
+    { id: "linkedin", label: "LinkedIn Generator" },
+    { id: "blog", label: "Blog Generator" },
+  ];
+
+  // Sub-tabs binnen elk channel: Brainstorm, Thought to Post, Content Bank
+  const modeTabs = [
     { id: "brainstorm", label: "Brainstorm" },
     { id: "thought-to-post", label: "Thought to Post" },
     { id: "content-bank", label: "Content Bank" },
   ];
 
-  // Sub-tabs voor Thought to Post
-  const channelTabs = [
-    { id: "linkedin", label: "LinkedIn" },
-    { id: "blog", label: "Blog" },
-  ];
+  const handleChannelChange = (channelId: string) => {
+    setActiveChannel(channelId as "linkedin" | "blog");
+  };
 
   const handleModeChange = (modeId: string) => {
     setActiveMode(modeId as "brainstorm" | "thought-to-post" | "content-bank");
-  };
-
-  const handleChannelChange = (channelId: string) => {
-    setActiveChannel(channelId as "linkedin" | "blog");
   };
 
   const handleBrainstorm = async () => {
@@ -214,6 +348,7 @@ export default function BureauAIPage() {
     try {
       const params = new URLSearchParams({
         filter: contentBankFilter,
+        channel: activeChannel, // Filter op huidige channel
         ...(contentBankSearch && { search: contentBankSearch }),
         ...(contentBankPostType && { postType: contentBankPostType }),
         ...(contentBankFunnelPhase && { funnelPhase: contentBankFunnelPhase }),
@@ -346,16 +481,28 @@ export default function BureauAIPage() {
       </div>
 
       <Card>
-        {/* Hoofdmodi tabs */}
+        {/* Hoofdmodi tabs: LinkedIn of Blog */}
         <Tabs
-          tabs={mainModeTabs}
-          activeTab={activeMode}
-          onTabChange={handleModeChange}
+          tabs={channelTabs}
+          activeTab={activeChannel}
+          onTabChange={handleChannelChange}
         />
 
         <div className="mt-6">
-          {/* Brainstorm Mode */}
-          {activeMode === "brainstorm" && (
+          {/* Sub-tabs: Brainstorm, Thought to Post, Content Bank */}
+          <div className="mb-6">
+            <Tabs
+              tabs={modeTabs}
+              activeTab={activeMode}
+              onTabChange={handleModeChange}
+            />
+          </div>
+
+          {/* LinkedIn Channel */}
+          {activeChannel === "linkedin" && (
+            <>
+              {/* LinkedIn - Brainstorm Mode */}
+              {activeMode === "brainstorm" && (
             <div className="space-y-6">
               <div>
                 <h2 className="text-base font-medium text-zinc-900 mb-2">
@@ -418,14 +565,9 @@ export default function BureauAIPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              // Later: opslaan naar Content Bank
-                              // Voor nu: kopieer naar Thought to Post
+                              // Kopieer naar Thought to Post
                               setActiveMode("thought-to-post");
-                              if (activeChannel === "linkedin") {
-                                setThought(idea);
-                              } else {
-                                setBlogThought(idea);
-                              }
+                              setThought(idea);
                             }}
                             className="flex-shrink-0"
                           >
@@ -440,34 +582,21 @@ export default function BureauAIPage() {
             </div>
           )}
 
-          {/* Thought to Post Mode */}
-          {activeMode === "thought-to-post" && (
-            <div className="space-y-6">
+              {/* LinkedIn - Thought to Post Mode */}
+              {activeMode === "thought-to-post" && (
+                <div className="space-y-6">
               <div>
                 <h2 className="text-base font-medium text-zinc-900 mb-2">
                   Thought to Post
                 </h2>
                 <p className="text-sm text-zinc-600 mb-4">
-                  Laat AI je helpen bij het uitwerken van jouw gedachten tot een post
+                  Laat AI je helpen bij het uitwerken van jouw gedachten tot een LinkedIn post
                 </p>
-                
-                {/* Sub-tabs voor LinkedIn/Blog */}
-                <div className="mb-6">
-                  <Tabs
-                    tabs={channelTabs}
-                    activeTab={activeChannel}
-                    onTabChange={handleChannelChange}
-                  />
-                </div>
               </div>
-
-              {/* LinkedIn Channel */}
-              {activeChannel === "linkedin" && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-base font-medium text-zinc-900 mb-4">
-                      LinkedIn thought → post
-                    </h2>
+              <div>
+                <h3 className="text-base font-medium text-zinc-900 mb-4">
+                  LinkedIn thought → post
+                </h3>
                     {linkedinError && (
                       <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
                         {linkedinError}
@@ -510,9 +639,9 @@ export default function BureauAIPage() {
                         </Button>
                       </div>
                     </div>
-                  </div>
+              </div>
 
-                  {linkedinContent && (
+              {linkedinContent && (
                     <div className="mt-6 pt-6 border-t border-zinc-200">
                       <h3 className="text-sm font-medium text-zinc-900 mb-3">
                         Gegenereerde post
@@ -535,13 +664,273 @@ export default function BureauAIPage() {
                 </div>
               )}
 
-              {/* Blog Channel */}
-              {activeChannel === "blog" && (
+              {/* LinkedIn - Content Bank Mode */}
+              {activeMode === "content-bank" && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-base font-medium text-zinc-900 mb-4">
-                      Blog thought → artikel
+                    <h2 className="text-base font-medium text-zinc-900 mb-2">
+                      Content Bank
                     </h2>
+                    <p className="text-sm text-zinc-600 mb-4">
+                      Jouw ideeën en bronnen op één plek
+                    </p>
+                    
+                    {/* Sub-tabs voor filters */}
+                    <div className="mb-6">
+                      <Tabs
+                        tabs={[
+                          { id: "favorites", label: "Favorieten" },
+                          { id: "all", label: "Alle ideeën" },
+                          { id: "sources", label: "Bronnen" },
+                        ]}
+                        activeTab={contentBankFilter}
+                        onTabChange={(tabId) =>
+                          setContentBankFilter(tabId as "favorites" | "all" | "sources")
+                        }
+                      />
+                    </div>
+
+                    {/* Search and filters */}
+                    <div className="mb-6 space-y-4">
+                      <Input
+                        label="Zoek ideeën"
+                        value={contentBankSearch}
+                        onChange={(e) => setContentBankSearch(e.target.value)}
+                        placeholder="Zoek in content..."
+                        className="w-full"
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                            Soort post
+                          </label>
+                          <select
+                            value={contentBankPostType}
+                            onChange={(e) =>
+                              setContentBankPostType(e.target.value as "TOFU" | "MOFU" | "BOFU" | "")
+                            }
+                            className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400"
+                          >
+                            <option value="">Alle soorten</option>
+                            <option value="TOFU">TOFU (Top of Funnel)</option>
+                            <option value="MOFU">MOFU (Middle of Funnel)</option>
+                            <option value="BOFU">BOFU (Bottom of Funnel)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                            Funnel fase
+                          </label>
+                          <input
+                            type="text"
+                            value={contentBankFunnelPhase}
+                            onChange={(e) => setContentBankFunnelPhase(e.target.value)}
+                            placeholder="Bijv. Awareness, Consideration..."
+                            className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {contentBankError && (
+                      <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                        {contentBankError}
+                      </div>
+                    )}
+
+                    {/* Outputs list */}
+                    {contentBankLoading ? (
+                      <div className="text-center py-12">
+                        <p className="text-zinc-600">Laden...</p>
+                      </div>
+                    ) : outputs.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-zinc-600 mb-2">
+                          Geen ideeën gevonden.
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {contentBankSearch
+                            ? "Probeer een andere zoekterm"
+                            : "Genereer je eerste content via Brainstorm of Thought to Post"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {outputs.map((output) => (
+                          <div
+                            key={output.id}
+                            className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs font-medium text-zinc-500 uppercase">
+                                    {output.channel}
+                                  </span>
+                                  <span className="text-xs text-zinc-400">•</span>
+                                  <span className="text-xs text-zinc-500">
+                                    {new Date(output.createdAt).toLocaleDateString("nl-NL")}
+                                  </span>
+                                  {output.inputJson?.isFavorite && (
+                                    <>
+                                      <span className="text-xs text-zinc-400">•</span>
+                                      <span className="text-xs text-zinc-500">⭐ Favoriet</span>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="mb-2">
+                                  {output.inputJson?.thought && (
+                                    <p className="text-xs text-zinc-600 mb-1">
+                                      <span className="font-medium">Thought:</span>{" "}
+                                      {output.inputJson.thought}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="p-3 bg-white border border-zinc-200 rounded-lg">
+                                  <p className="text-sm text-zinc-900 leading-relaxed whitespace-pre-wrap">
+                                    {output.content}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2 flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleFavorite(output.id)}
+                                  title={
+                                    output.inputJson?.isFavorite
+                                      ? "Verwijder uit favorieten"
+                                      : "Voeg toe aan favorieten"
+                                  }
+                                >
+                                  {output.inputJson?.isFavorite ? "⭐" : "☆"}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleUseOutput(output)}
+                                >
+                                  Gebruik
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteOutput(output.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Verwijder
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Blog Channel */}
+          {activeChannel === "blog" && (
+            <>
+              {/* Blog - Brainstorm Mode */}
+              {activeMode === "brainstorm" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-base font-medium text-zinc-900 mb-2">
+                      Brainstorm
+                    </h2>
+                    <p className="text-sm text-zinc-600 mb-6">
+                      Laat AI je helpen bij het bedenken van blog content ideeën
+                    </p>
+                    {brainstormError && (
+                      <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                        {brainstormError}
+                      </div>
+                    )}
+                    <div className="space-y-4">
+                      <Textarea
+                        label="Over welk onderwerp zou je meer content ideeën willen? (optioneel)"
+                        value={brainstormTopic}
+                        onChange={(e) => setBrainstormTopic(e.target.value)}
+                        rows={4}
+                        placeholder="Bijvoorbeeld: AI implementatie binnen MKB bedrijven..."
+                        disabled={brainstormLoading}
+                      />
+                      <div className="flex items-end justify-end gap-4">
+                        <Button
+                          variant="primary"
+                          size="md"
+                          onClick={handleBrainstorm}
+                          disabled={brainstormLoading}
+                        >
+                          {brainstormLoading ? "Genereren..." : "Genereer ideeën"}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Brainstorm Results */}
+                  {brainstormIdeas.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-zinc-200">
+                      <h3 className="text-sm font-medium text-zinc-900 mb-4">
+                        Content ideeën ({brainstormIdeas.length})
+                      </h3>
+                      <div className="space-y-3">
+                        {brainstormIdeas.map((idea, index) => (
+                          <div
+                            key={index}
+                            className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs font-medium text-zinc-500">
+                                    Idee {index + 1}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-zinc-900 leading-relaxed">
+                                  {idea}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  // Kopieer naar Thought to Post
+                                  setActiveMode("thought-to-post");
+                                  setBlogThought(idea);
+                                }}
+                                className="flex-shrink-0"
+                              >
+                                Gebruik
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Blog - Thought to Post Mode */}
+              {activeMode === "thought-to-post" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-base font-medium text-zinc-900 mb-2">
+                      Thought to Post
+                    </h2>
+                    <p className="text-sm text-zinc-600 mb-4">
+                      Laat AI je helpen bij het uitwerken van jouw gedachten tot een blogartikel
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-medium text-zinc-900 mb-4">
+                      Blog thought → artikel
+                    </h3>
                     {blogError && (
                       <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
                         {blogError}
@@ -554,8 +943,60 @@ export default function BureauAIPage() {
                         onChange={(e) => setBlogThought(e.target.value)}
                         rows={4}
                         placeholder="Vertel in je eigen woorden waar het blogartikel over moet gaan..."
-                        disabled={blogLoading}
+                        disabled={blogLoading || blogInterviewLoading}
                       />
+                      
+                      {/* Interview vragen sectie */}
+                      {blogShowInterview && blogInterviewQuestions.length > 0 && (
+                        <div className="mt-4 p-4 bg-zinc-50 border border-zinc-200 rounded-xl space-y-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-zinc-900">
+                              Verdiepingsvragen
+                            </h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setBlogShowInterview(false);
+                                setBlogInterviewAnswers({});
+                              }}
+                            >
+                              Sluiten
+                            </Button>
+                          </div>
+                          {blogInterviewQuestions.map((q) => (
+                            <div key={q.key} className="space-y-2">
+                              <div>
+                                <label className="block text-sm font-medium text-zinc-900 mb-1">
+                                  {q.question}
+                                </label>
+                                <p className="text-xs text-zinc-500 mb-2">
+                                  {q.intent}
+                                </p>
+                              </div>
+                              <Textarea
+                                value={blogInterviewAnswers[q.key] || ""}
+                                onChange={(e) =>
+                                  setBlogInterviewAnswers((prev) => ({
+                                    ...prev,
+                                    [q.key]: e.target.value,
+                                  }))
+                                }
+                                rows={2}
+                                placeholder="Je antwoord..."
+                                disabled={blogLoading}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {blogInterviewError && (
+                        <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                          {blogInterviewError}
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-zinc-900 mb-1.5">
@@ -607,6 +1048,16 @@ export default function BureauAIPage() {
                         </div>
                       </div>
                       <div className="flex items-end justify-end gap-4">
+                        {!blogShowInterview && (
+                          <Button
+                            onClick={handleInterviewBlog}
+                            disabled={blogInterviewLoading || blogThought.trim().length < 10}
+                            variant="default"
+                            size="md"
+                          >
+                            {blogInterviewLoading ? "Vragen genereren..." : "Stel verdiepingsvragen"}
+                          </Button>
+                        )}
                         <Button
                           onClick={handleGenerateBlog}
                           disabled={blogLoading || blogThought.trim().length < 10}
@@ -641,173 +1092,173 @@ export default function BureauAIPage() {
                   )}
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Content Bank Mode */}
-          {activeMode === "content-bank" && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-base font-medium text-zinc-900 mb-2">
-                  Content Bank
-                </h2>
-                <p className="text-sm text-zinc-600 mb-4">
-                  Jouw ideeën en bronnen op één plek
-                </p>
-                
-                {/* Sub-tabs voor filters */}
-                <div className="mb-6">
-                  <Tabs
-                    tabs={[
-                      { id: "favorites", label: "Favorieten" },
-                      { id: "all", label: "Alle ideeën" },
-                      { id: "sources", label: "Bronnen" },
-                    ]}
-                    activeTab={contentBankFilter}
-                    onTabChange={(tabId) =>
-                      setContentBankFilter(tabId as "favorites" | "all" | "sources")
-                    }
-                  />
-                </div>
-
-                {/* Search and filters */}
-                <div className="mb-6 space-y-4">
-                  <Input
-                    label="Zoek ideeën"
-                    value={contentBankSearch}
-                    onChange={(e) => setContentBankSearch(e.target.value)}
-                    placeholder="Zoek in content..."
-                    className="w-full"
-                  />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-900 mb-1.5">
-                        Soort post
-                      </label>
-                      <select
-                        value={contentBankPostType}
-                        onChange={(e) =>
-                          setContentBankPostType(e.target.value as "TOFU" | "MOFU" | "BOFU" | "")
+              {/* Blog - Content Bank Mode */}
+              {activeMode === "content-bank" && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-base font-medium text-zinc-900 mb-2">
+                      Content Bank
+                    </h2>
+                    <p className="text-sm text-zinc-600 mb-4">
+                      Jouw blog ideeën en bronnen op één plek
+                    </p>
+                    
+                    {/* Sub-tabs voor filters */}
+                    <div className="mb-6">
+                      <Tabs
+                        tabs={[
+                          { id: "favorites", label: "Favorieten" },
+                          { id: "all", label: "Alle ideeën" },
+                          { id: "sources", label: "Bronnen" },
+                        ]}
+                        activeTab={contentBankFilter}
+                        onTabChange={(tabId) =>
+                          setContentBankFilter(tabId as "favorites" | "all" | "sources")
                         }
-                        className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400"
-                      >
-                        <option value="">Alle soorten</option>
-                        <option value="TOFU">TOFU (Top of Funnel)</option>
-                        <option value="MOFU">MOFU (Middle of Funnel)</option>
-                        <option value="BOFU">BOFU (Bottom of Funnel)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-900 mb-1.5">
-                        Funnel fase
-                      </label>
-                      <input
-                        type="text"
-                        value={contentBankFunnelPhase}
-                        onChange={(e) => setContentBankFunnelPhase(e.target.value)}
-                        placeholder="Bijv. Awareness, Consideration..."
-                        className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400"
                       />
                     </div>
-                  </div>
-                </div>
 
-                {contentBankError && (
-                  <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
-                    {contentBankError}
-                  </div>
-                )}
-
-                {/* Outputs list */}
-                {contentBankLoading ? (
-                  <div className="text-center py-12">
-                    <p className="text-zinc-600">Laden...</p>
-                  </div>
-                ) : outputs.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-zinc-600 mb-2">
-                      Geen ideeën gevonden.
-                    </p>
-                    <p className="text-sm text-zinc-500">
-                      {contentBankSearch
-                        ? "Probeer een andere zoekterm"
-                        : "Genereer je eerste content via Brainstorm of Thought to Post"}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {outputs.map((output) => (
-                      <div
-                        key={output.id}
-                        className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-xs font-medium text-zinc-500 uppercase">
-                                {output.channel}
-                              </span>
-                              <span className="text-xs text-zinc-400">•</span>
-                              <span className="text-xs text-zinc-500">
-                                {new Date(output.createdAt).toLocaleDateString("nl-NL")}
-                              </span>
-                              {output.inputJson?.isFavorite && (
-                                <>
-                                  <span className="text-xs text-zinc-400">•</span>
-                                  <span className="text-xs text-zinc-500">⭐ Favoriet</span>
-                                </>
-                              )}
-                            </div>
-                            <div className="mb-2">
-                              {output.inputJson?.thought && (
-                                <p className="text-xs text-zinc-600 mb-1">
-                                  <span className="font-medium">Thought:</span>{" "}
-                                  {output.inputJson.thought}
-                                </p>
-                              )}
-                            </div>
-                            <div className="p-3 bg-white border border-zinc-200 rounded-lg">
-                              <p className="text-sm text-zinc-900 leading-relaxed whitespace-pre-wrap">
-                                {output.content}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex flex-col gap-2 flex-shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleToggleFavorite(output.id)}
-                              title={
-                                output.inputJson?.isFavorite
-                                  ? "Verwijder uit favorieten"
-                                  : "Voeg toe aan favorieten"
-                              }
-                            >
-                              {output.inputJson?.isFavorite ? "⭐" : "☆"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUseOutput(output)}
-                            >
-                              Gebruik
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteOutput(output.id)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            >
-                              Verwijder
-                            </Button>
-                          </div>
+                    {/* Search and filters */}
+                    <div className="mb-6 space-y-4">
+                      <Input
+                        label="Zoek ideeën"
+                        value={contentBankSearch}
+                        onChange={(e) => setContentBankSearch(e.target.value)}
+                        placeholder="Zoek in content..."
+                        className="w-full"
+                      />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                            Soort post
+                          </label>
+                          <select
+                            value={contentBankPostType}
+                            onChange={(e) =>
+                              setContentBankPostType(e.target.value as "TOFU" | "MOFU" | "BOFU" | "")
+                            }
+                            className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400"
+                          >
+                            <option value="">Alle soorten</option>
+                            <option value="TOFU">TOFU (Top of Funnel)</option>
+                            <option value="MOFU">MOFU (Middle of Funnel)</option>
+                            <option value="BOFU">BOFU (Bottom of Funnel)</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-900 mb-1.5">
+                            Funnel fase
+                          </label>
+                          <input
+                            type="text"
+                            value={contentBankFunnelPhase}
+                            onChange={(e) => setContentBankFunnelPhase(e.target.value)}
+                            placeholder="Bijv. Awareness, Consideration..."
+                            className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-xl bg-white text-zinc-900 focus:outline-none focus:ring-0 focus:border-zinc-400"
+                          />
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    {contentBankError && (
+                      <div className="mb-4 p-3 text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl">
+                        {contentBankError}
+                      </div>
+                    )}
+
+                    {/* Outputs list */}
+                    {contentBankLoading ? (
+                      <div className="text-center py-12">
+                        <p className="text-zinc-600">Laden...</p>
+                      </div>
+                    ) : outputs.length === 0 ? (
+                      <div className="text-center py-12">
+                        <p className="text-zinc-600 mb-2">
+                          Geen ideeën gevonden.
+                        </p>
+                        <p className="text-sm text-zinc-500">
+                          {contentBankSearch
+                            ? "Probeer een andere zoekterm"
+                            : "Genereer je eerste content via Brainstorm of Thought to Post"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {outputs.map((output) => (
+                          <div
+                            key={output.id}
+                            className="p-4 bg-zinc-50 border border-zinc-200 rounded-xl"
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-xs font-medium text-zinc-500 uppercase">
+                                    {output.channel}
+                                  </span>
+                                  <span className="text-xs text-zinc-400">•</span>
+                                  <span className="text-xs text-zinc-500">
+                                    {new Date(output.createdAt).toLocaleDateString("nl-NL")}
+                                  </span>
+                                  {output.inputJson?.isFavorite && (
+                                    <>
+                                      <span className="text-xs text-zinc-400">•</span>
+                                      <span className="text-xs text-zinc-500">⭐ Favoriet</span>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="mb-2">
+                                  {output.inputJson?.thought && (
+                                    <p className="text-xs text-zinc-600 mb-1">
+                                      <span className="font-medium">Thought:</span>{" "}
+                                      {output.inputJson.thought}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="p-3 bg-white border border-zinc-200 rounded-lg">
+                                  <p className="text-sm text-zinc-900 leading-relaxed whitespace-pre-wrap">
+                                    {output.content}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex flex-col gap-2 flex-shrink-0">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleFavorite(output.id)}
+                                  title={
+                                    output.inputJson?.isFavorite
+                                      ? "Verwijder uit favorieten"
+                                      : "Voeg toe aan favorieten"
+                                  }
+                                >
+                                  {output.inputJson?.isFavorite ? "⭐" : "☆"}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleUseOutput(output)}
+                                >
+                                  Gebruik
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteOutput(output.id)}
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  Verwijder
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </Card>
