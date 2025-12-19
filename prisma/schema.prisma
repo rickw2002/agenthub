@@ -102,39 +102,49 @@ model RunLog {
 // ChatRole values: USER, ASSISTANT
 
 model Connection {
-  id        String   @id @default(cuid())
-  userId    String
-  provider  String   // GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
-  status    String   // CONNECTED | PENDING | ERROR | NOT_CONNECTED
-  authJson  String?  // JSON stored as string
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  provider    String   // GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
+  status      String   // CONNECTED | PENDING | ERROR | NOT_CONNECTED
+  authJson    String?  // JSON stored as string
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, provider])
   @@index([userId])
   @@index([userId, provider])
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+  @@index([workspaceId, provider])
 }
 
 model MetricDaily {
   id             String   @id @default(cuid())
   userId         String
-  provider       String   // GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
+  workspaceId    String
+  provider       String   // GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
   date           DateTime
   metricsJson    String   // JSON stored as string
   dimensionsJson String?  // JSON stored as string
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([userId, provider])
   @@index([userId, provider, date])
+  @@index([workspaceId, provider])
+  @@index([workspaceId, provider, date])
 }
 
 model Insight {
   id          String   @id @default(cuid())
   userId      String
-  provider    String?  // GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT | null for master
+  workspaceId String
+  provider    String?  // GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT | null for master
   title       String
   summary     String
   severity    String   // INFO | WARNING | CRITICAL
@@ -143,22 +153,29 @@ model Insight {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, provider])
+  @@index([workspaceId])
+  @@index([workspaceId, provider])
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
-  userId    String
-  scope     String   // MASTER | GOOGLE_ADS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
-  role      String   // USER | ASSISTANT
-  content   String
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(cuid())
+  userId      String
+  workspaceId String
+  scope       String   // MASTER | GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
+  role        String   // USER | ASSISTANT
+  content     String
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, scope])
+  @@index([workspaceId])
+  @@index([workspaceId, scope])
 }
 
 model Workspace {
@@ -178,6 +195,10 @@ model Workspace {
   profileCards   ProfileCard[]
   examples       Example[]
   outputs        Output[]
+  connections    Connection[]
+  metricDailies  MetricDaily[]
+  insights       Insight[]
+  chatMessages   ChatMessage[]
 
   @@index([ownerId])
   @@index([organizationId])

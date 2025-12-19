@@ -3,8 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import DataHubContent from "@/components/DataHubContent";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
-const PROVIDERS = ["GOOGLE_ADS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
+const PROVIDERS = ["GOOGLE_ADS", "GOOGLE_ANALYTICS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
 
 export default async function DataHubPage() {
   const session = await getServerSession(authOptions);
@@ -13,9 +14,11 @@ export default async function DataHubPage() {
     redirect("/auth/login");
   }
 
+  const workspace = await getOrCreateWorkspace(session.user.id);
+
   // Fetch overview data directly from Prisma (similar to dashboard pattern)
   const connections = await prisma.connection.findMany({
-    where: { userId: session.user.id },
+    where: { workspaceId: workspace.id },
   });
 
   const connectionMap = new Map(connections.map((c) => [c.provider, c]));
@@ -26,7 +29,7 @@ export default async function DataHubPage() {
 
   const allMetrics = await prisma.metricDaily.findMany({
     where: {
-      userId: session.user.id,
+      workspaceId: workspace.id,
       date: {
         gte: sevenDaysAgo,
       },
@@ -38,7 +41,7 @@ export default async function DataHubPage() {
 
   const allInsights = await prisma.insight.findMany({
     where: {
-      userId: session.user.id,
+      workspaceId: workspace.id,
     },
     orderBy: {
       createdAt: "desc",

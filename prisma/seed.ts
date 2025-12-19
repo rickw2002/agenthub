@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 const prisma = new PrismaClient();
 
@@ -376,9 +377,13 @@ async function seedDataHub() {
 
   const userId = user.id;
 
+  // Get or create workspace for this user (workspace-based tenancy)
+  const workspace = await getOrCreateWorkspace(userId);
+  const workspaceId = workspace.id;
+
   // Check if connections already exist (idempotent check)
   const existingConnections = await prisma.connection.findMany({
-    where: { userId },
+    where: { workspaceId },
   });
 
   if (existingConnections.length > 0) {
@@ -400,6 +405,7 @@ async function seedDataHub() {
     await prisma.connection.create({
       data: {
         userId,
+        workspaceId,
         provider,
         status,
         authJson: status === "CONNECTED" ? JSON.stringify({ connected: true, lastSync: new Date().toISOString() }) : null,
@@ -446,6 +452,7 @@ async function seedDataHub() {
 
       metricsArray.push({
         userId,
+        workspaceId,
         provider,
         date,
         metricsJson,
@@ -538,6 +545,7 @@ async function seedDataHub() {
     await prisma.insight.create({
       data: {
         userId,
+        workspaceId,
         provider: insight.provider,
         title: insight.title,
         summary: insight.summary,

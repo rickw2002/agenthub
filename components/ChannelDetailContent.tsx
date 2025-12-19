@@ -47,6 +47,7 @@ interface ChannelDetailContentProps {
 function getProviderDisplayName(provider: string): string {
   const names: Record<string, string> = {
     GOOGLE_ADS: "Google Ads",
+    GOOGLE_ANALYTICS: "Google Analytics",
     META_ADS: "Meta Ads",
     LINKEDIN: "LinkedIn",
     WEBSITE: "Website",

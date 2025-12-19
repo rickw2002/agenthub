@@ -1,0 +1,17 @@
+"""
+Health check endpoint.
+"""
+from fastapi import APIRouter
+
+router = APIRouter()
+
+
+@router.get("/health")
+async def health():
+    """Health check endpoint."""
+    return {
+        "status": "ok",
+        "service": "intel",
+        "version": "0.1.0"
+    }
+

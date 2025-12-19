@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
 
-const VALID_PROVIDERS = ["GOOGLE_ADS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
+const VALID_PROVIDERS = ["GOOGLE_ADS", "GOOGLE_ANALYTICS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
 
 interface MetricsData {
   impressions: number;
@@ -34,6 +35,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
     }
 
+    const workspace = await getOrCreateWorkspace(user.id);
+
     // Get provider from query params
     const { searchParams } = new URL(request.url);
     const provider = searchParams.get("provider");
@@ -54,12 +57,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get connection
-    const connection = await prisma.connection.findUnique({
+    const connection = await prisma.connection.findFirst({
       where: {
-        userId_provider: {
-          userId: user.id,
-          provider,
-        },
+        workspaceId: workspace.id,
+        provider,
       },
     });
 
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     const metrics = await prisma.metricDaily.findMany({
       where: {
-        userId: user.id,
+        workspaceId: workspace.id,
         provider,
         date: {
           gte: thirtyDaysAgo,
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
     // Get latest 10 insights
     const insights = await prisma.insight.findMany({
       where: {
-        userId: user.id,
+        workspaceId: workspace.id,
         provider,
       },
       orderBy: {

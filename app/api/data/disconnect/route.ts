@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 
-const VALID_PROVIDERS = ["GOOGLE_ADS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
+const VALID_PROVIDERS = ["GOOGLE_ADS", "GOOGLE_ANALYTICS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
 
 /**
  * API route for disconnecting a data provider
@@ -22,6 +23,8 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
     }
+
+    const workspace = await getOrCreateWorkspace(user.id);
 
     // Parse request body
     let body;
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!VALID_PROVIDERS.includes(provider as any)) {
+    if (!VALID_PROVIDERS.includes(provider as typeof VALID_PROVIDERS[number])) {
       return NextResponse.json(
         { error: `Ongeldige provider. Geldige providers: ${VALID_PROVIDERS.join(", ")}` },
         { status: 400 }
@@ -55,17 +58,19 @@ export async function POST(request: NextRequest) {
     // For now, we'll upsert to NOT_CONNECTED to ensure the record exists
     await prisma.connection.upsert({
       where: {
-        userId_provider: {
-          userId: user.id,
+        workspaceId_provider: {
+          workspaceId: workspace.id,
           provider,
         },
       },
       update: {
         status: "NOT_CONNECTED",
         authJson: null,
+        userId: user.id,
       },
       create: {
         userId: user.id,
+        workspaceId: workspace.id,
         provider,
         status: "NOT_CONNECTED",
         authJson: null,

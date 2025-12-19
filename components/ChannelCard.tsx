@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface ProviderSummary {
   provider: string;
@@ -38,6 +38,7 @@ interface ChannelCardProps {
 function getProviderDisplayName(provider: string): string {
   const names: Record<string, string> = {
     GOOGLE_ADS: "Google Ads",
+    GOOGLE_ANALYTICS: "Google Analytics",
     META_ADS: "Meta Ads",
     LINKEDIN: "LinkedIn",
     WEBSITE: "Website",
@@ -72,7 +73,7 @@ function getStatusDisplayName(status: string): string {
 }
 
 function providerToSlug(provider: string): string {
-  return provider.toLowerCase().replace(/_/g, "_");
+  return provider.toLowerCase().replace(/_/g, "-");
 }
 
 function formatNumber(num: number): string {
@@ -124,6 +125,7 @@ export default function ChannelCard({ summary }: ChannelCardProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [workspaceInfo, setWorkspaceInfo] = useState<{ userId: string; workspaceId: string } | null>(null);
 
   const providerSlug = providerToSlug(summary.provider);
   const displayName = getProviderDisplayName(summary.provider);
@@ -136,10 +138,48 @@ export default function ChannelCard({ summary }: ChannelCardProps) {
   const hasData = summary.status === "CONNECTED" && summary.kpis.impressions > 0;
   const isConnected = summary.status === "CONNECTED";
 
+  // Fetch workspace info on mount (only once)
+  useEffect(() => {
+    const fetchWorkspaceInfo = async () => {
+      try {
+        const response = await fetch("/api/workspace/me");
+        if (!response.ok) {
+          console.error("Failed to fetch workspace info");
+          return;
+        }
+        const data = await response.json();
+        setWorkspaceInfo({ userId: data.userId, workspaceId: data.workspaceId });
+      } catch (err) {
+        console.error("Error fetching workspace info:", err);
+      }
+    };
+    fetchWorkspaceInfo();
+  }, []);
+
   const handleConnect = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // For GOOGLE_ANALYTICS, redirect to FastAPI OAuth
+    if (summary.provider === "GOOGLE_ANALYTICS") {
+      const intelBaseUrl = process.env.NEXT_PUBLIC_INTEL_BASE_URL;
+      
+      if (!intelBaseUrl) {
+        setError("Intel service URL missing. Please contact support.");
+        return;
+      }
+
+      if (!workspaceInfo) {
+        setError("Workspace info not loaded. Please refresh the page.");
+        return;
+      }
+
+      // Redirect to FastAPI OAuth start
+      window.location.href = `${intelBaseUrl}/oauth/ga4/start?workspaceId=${workspaceInfo.workspaceId}&userId=${workspaceInfo.userId}`;
+      return;
+    }
+
+    // For other providers, use existing connect flow
     setIsLoading(true);
     setError(null);
 

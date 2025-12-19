@@ -39,6 +39,11 @@ next-env.d.ts
 /prisma/*.db
 /prisma/*.db-journal
 
+# backups
+/backups
+*.backup
+*.bak
+
 
 
 

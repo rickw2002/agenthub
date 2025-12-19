@@ -70,6 +70,11 @@ NEXTAUTH_SECRET="change-this-to-a-random-secret-in-production"
 
 Zorg ervoor dat `NEXTAUTH_SECRET` een willekeurige string is (bijv. gegenereerd met `openssl rand -base64 32`).
 
+**Data Hub OAuth (FastAPI Intel Service):**
+- `NEXT_PUBLIC_INTEL_BASE_URL` - Base URL van de FastAPI Intel service (bijv. `http://localhost:8001` voor lokaal, `https://bureau-ai-intel.onrender.com` voor productie)
+  - Vereist voor Google Analytics OAuth flow
+  - Zonder deze variabele zal de connect knop een error tonen
+
 ### OpenAI koppeling (AI-functionaliteit)
 
 Voor de AI-functionaliteit zijn de volgende variabelen nodig:

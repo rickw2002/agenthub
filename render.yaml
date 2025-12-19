@@ -26,3 +26,34 @@ services:
     healthCheckPath: /
     autoDeploy: true
 
+  # FastAPI Intel Service (OAuth, Sync, Analytics)
+  # NOTE: Create this service manually on Render first, then uncomment below
+  # After manual creation, you can sync via Blueprint or keep manual config
+  # - type: web
+  #   name: bureau-ai-intel
+  #   env: python
+  #   region: frankfurt
+  #   plan: starter
+  #   rootDir: services/intel
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       sync: false
+  #     - key: ENCRYPTION_KEY
+  #       sync: false
+  #     - key: GOOGLE_CLIENT_ID
+  #       sync: false
+  #     - key: GOOGLE_CLIENT_SECRET
+  #       sync: false
+  #     - key: GOOGLE_REDIRECT_URI
+  #       sync: false
+  #     - key: NEXTJS_BASE_URL
+  #       sync: false
+  #     - key: INTEL_API_KEY
+  #       sync: false
+  #     - key: CRON_SECRET
+  #       sync: false
+  #   healthCheckPath: /health
+  #   autoDeploy: true
+

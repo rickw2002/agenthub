@@ -2,9 +2,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 import ChannelDetailContent from "@/components/ChannelDetailContent";
+import GA4PropertySelector from "@/components/GA4PropertySelector";
 
-const VALID_PROVIDERS = ["GOOGLE_ADS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
+const VALID_PROVIDERS = ["GOOGLE_ADS", "GOOGLE_ANALYTICS", "META_ADS", "LINKEDIN", "WEBSITE", "EMAIL", "SUPPORT"] as const;
 
 function slugToProvider(slug: string): string | null {
   // Convert "google_ads" or "google-ads" to "GOOGLE_ADS"
@@ -19,14 +21,24 @@ interface PageProps {
   params: {
     provider: string;
   };
+  searchParams?: {
+    connected?: string;
+    error?: string;
+  };
 }
 
-export default async function ChannelDetailPage({ params }: PageProps) {
+export default async function ChannelDetailPage({ params, searchParams = {} }: PageProps) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
     redirect("/auth/login");
   }
+
+  const workspace = await getOrCreateWorkspace(session.user.id);
+  
+  // Check if OAuth callback just completed
+  const oauthConnected = searchParams?.connected === "1";
+  const oauthError = searchParams?.error;
 
   // Convert slug to provider enum
   const provider = slugToProvider(params.provider);
@@ -36,12 +48,10 @@ export default async function ChannelDetailPage({ params }: PageProps) {
   }
 
   // Fetch channel data directly from Prisma (similar to dashboard pattern)
-  const connection = await prisma.connection.findUnique({
+  const connection = await prisma.connection.findFirst({
     where: {
-      userId_provider: {
-        userId: session.user.id,
-        provider,
-      },
+      workspaceId: workspace.id,
+      provider,
     },
   });
 
@@ -52,7 +62,7 @@ export default async function ChannelDetailPage({ params }: PageProps) {
 
   const metrics = await prisma.metricDaily.findMany({
     where: {
-      userId: session.user.id,
+      workspaceId: workspace.id,
       provider,
       date: {
         gte: thirtyDaysAgo,
@@ -89,7 +99,7 @@ export default async function ChannelDetailPage({ params }: PageProps) {
   // Get latest 10 insights
   const insights = await prisma.insight.findMany({
     where: {
-      userId: session.user.id,
+      workspaceId: workspace.id,
       provider,
     },
     orderBy: {
@@ -154,6 +164,38 @@ export default async function ChannelDetailPage({ params }: PageProps) {
     insights: formattedInsights,
   };
 
-  return <ChannelDetailContent channelData={channelData} />;
+  // Show property selector if OAuth just completed and no property selected yet
+  const showPropertySelector = 
+    provider === "GOOGLE_ANALYTICS" && 
+    oauthConnected && 
+    connection?.status !== "CONNECTED";
+
+  return (
+    <div>
+      {oauthError && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-800">
+            {oauthError === "no_properties" 
+              ? "OAuth completed but no GA4 properties found. Please check your Google account permissions."
+              : `OAuth error: ${oauthError}`}
+          </p>
+        </div>
+      )}
+      
+      {showPropertySelector && (
+        <div className="mb-6">
+          <GA4PropertySelector
+            workspaceId={workspace.id}
+            userId={session.user.id}
+            onSelect={() => {
+              // Page will refresh via window.location.reload() in component
+            }}
+          />
+        </div>
+      )}
+      
+      <ChannelDetailContent channelData={channelData} />
+    </div>
+  );
 }
 

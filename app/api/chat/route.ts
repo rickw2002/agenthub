@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser, requireAuth } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { getOrCreateWorkspace } from "@/lib/workspace";
 import { generateText } from "@/lib/ai";
 
 const VALID_SCOPES = [
   "MASTER",
   "GOOGLE_ADS",
+  "GOOGLE_ANALYTICS",
   "META_ADS",
   "LINKEDIN",
   "WEBSITE",
@@ -41,6 +43,9 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: "Niet ingelogd" }, { status: 401 });
     }
+
+    // Resolve workspace for this user (workspace-based tenancy)
+    const workspace = await getOrCreateWorkspace(user.id);
 
     // Parse request body
     let body;
@@ -84,6 +89,7 @@ export async function POST(request: NextRequest) {
     const userMessage = await prisma.chatMessage.create({
       data: {
         userId: user.id,
+        workspaceId: workspace.id,
         scope,
         role: "USER",
         content: message.trim(),
@@ -103,7 +109,7 @@ export async function POST(request: NextRequest) {
         // Get latest metrics
         const latestMetric = await prisma.metricDaily.findFirst({
           where: {
-            userId: user.id,
+            workspaceId: workspace.id,
             provider,
           },
           orderBy: {
@@ -123,7 +129,7 @@ export async function POST(request: NextRequest) {
         // Get latest insights
         const insights = await prisma.insight.findMany({
           where: {
-            userId: user.id,
+            workspaceId: workspace.id,
             provider,
           },
           orderBy: {
@@ -191,7 +197,7 @@ export async function POST(request: NextRequest) {
       // For provider-specific scope, get that provider's KPIs and insights
       const latestMetric = await prisma.metricDaily.findFirst({
         where: {
-          userId: user.id,
+          workspaceId: workspace.id,
           provider: scope,
         },
         orderBy: {
@@ -201,7 +207,7 @@ export async function POST(request: NextRequest) {
 
       const insights = await prisma.insight.findMany({
         where: {
-          userId: user.id,
+          workspaceId: workspace.id,
           provider: scope,
         },
         orderBy: {
@@ -279,6 +285,7 @@ export async function POST(request: NextRequest) {
     const assistantMessage = await prisma.chatMessage.create({
       data: {
         userId: user.id,
+        workspaceId: workspace.id,
         scope,
         role: "ASSISTANT",
         content: assistantReply,
