@@ -55,11 +55,14 @@ Service will be available at: http://localhost:8001
 
 **Encryption:**
 - `ENCRYPTION_KEY` - Base64-encoded 32-byte key for AES-256-GCM token encryption (required for OAuth)
+  - Generate with: `openssl rand -base64 32`
+  - Example output: `K8j3mP9qR2vX5nL7wT4yU6zA1bC3dE5fG7hI9jK1lM3nO5pQ7rS9tU1vW3xY5z=`
 
 **Google OAuth:**
 - `GOOGLE_CLIENT_ID` - Google OAuth client ID (required for GA4 OAuth)
 - `GOOGLE_CLIENT_SECRET` - Google OAuth client secret (required for GA4 OAuth)
-- `GOOGLE_REDIRECT_URI` - Google OAuth redirect URI (required for GA4 OAuth)
+- `GOOGLE_REDIRECT_URI` or `GOOGLE_OAUTH_REDIRECT_URL` - Google OAuth redirect URI (required for GA4 OAuth)
+  - Both names are supported for backwards compatibility
   - Format: `https://<intel-service-url>/oauth/ga4/callback`
   - Example: `https://bureau-ai-intel.onrender.com/oauth/ga4/callback`
 
@@ -81,6 +84,31 @@ Response:
   "status": "ok",
   "service": "intel",
   "version": "0.1.0"
+}
+```
+
+### Configuration Status (Protected)
+
+Check OAuth configuration status (requires Intel API key):
+
+```bash
+curl http://localhost:8001/health/config \
+  -H "X-Intel-API-Key: dev-key"
+```
+
+Response:
+```json
+{
+  "oauthConfigured": true,
+  "missing": []
+}
+```
+
+If OAuth is not configured:
+```json
+{
+  "oauthConfigured": false,
+  "missing": ["GOOGLE_REDIRECT_URI (or GOOGLE_OAUTH_REDIRECT_URL)"]
 }
 ```
 
@@ -227,12 +255,24 @@ This service is designed to be deployed on Render as a separate Python service.
 - `bash start.sh`
 
 **Required Environment Variables on Render:**
-- `DATABASE_URL` - Same Postgres as Next.js
-- `ENCRYPTION_KEY` - Base64-encoded 32-byte key (generate with `openssl rand -base64 32`)
-- `GOOGLE_CLIENT_ID` - From Google Cloud Console
-- `GOOGLE_CLIENT_SECRET` - From Google Cloud Console
-- `GOOGLE_REDIRECT_URI` - `https://<intel-service-url>/oauth/ga4/callback`
-- `NEXTJS_BASE_URL` - `https://<nextjs-service-url>`
-- `INTEL_API_KEY` - Same value as in Next.js env
-- `CRON_SECRET` - For cron endpoints (must match Render Cron Job secret)
+
+**For OAuth Flow (GA4):**
+- `DATABASE_URL` - Same Postgres as Next.js (required)
+- `ENCRYPTION_KEY` - Base64-encoded 32-byte key (required)
+  - Generate: `openssl rand -base64 32`
+- `GOOGLE_CLIENT_ID` - From Google Cloud Console (required)
+- `GOOGLE_CLIENT_SECRET` - From Google Cloud Console (required)
+- `GOOGLE_REDIRECT_URI` or `GOOGLE_OAUTH_REDIRECT_URL` - `https://<intel-service-url>/oauth/ga4/callback` (required)
+  - Both names are supported (use whichever matches your Render setup)
+
+**For Service Operation:**
+- `NEXTJS_BASE_URL` - `https://<nextjs-service-url>` (required for OAuth redirects)
+- `INTEL_API_KEY` - Same value as in Next.js env (required for protected endpoints)
+- `CRON_SECRET` - For cron endpoints (required, must match Render Cron Job secret)
+
+**Quick Setup Checklist:**
+1. Generate `ENCRYPTION_KEY`: `openssl rand -base64 32`
+2. Set all OAuth vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (or `GOOGLE_OAUTH_REDIRECT_URL`)
+3. Set `DATABASE_URL` (same as Next.js)
+4. Set `NEXTJS_BASE_URL`, `INTEL_API_KEY`, `CRON_SECRET`
 

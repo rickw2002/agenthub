@@ -6,7 +6,7 @@ import httpx
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Query, HTTPException, status
 from fastapi.responses import RedirectResponse
-from app.config import settings
+from app.config import settings, get_oauth_flow_requirements
 from app.db import fetchrow, fetch, execute
 from app.crypto import encrypt_dict, decrypt_dict
 import uuid
@@ -29,11 +29,16 @@ async def oauth_ga4_start(
     Creates/updates Connection row with PENDING status and encrypted OAuth state.
     Redirects user to Google OAuth consent screen.
     """
-    # Validate required settings
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_REDIRECT_URI:
+    # Validate all required settings for OAuth flow
+    requirements = get_oauth_flow_requirements()
+    if not requirements["ready"]:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Google OAuth not configured"
+            detail={
+                "error": "OAuth flow not configured",
+                "message": "Missing required environment variables",
+                "missing": requirements["missing"]
+            }
         )
     
     # Validate inputs
@@ -128,11 +133,16 @@ async def oauth_ga4_callback(
             detail="code and state are required"
         )
     
-    # Validate required settings
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET or not settings.GOOGLE_REDIRECT_URI:
+    # Validate all required settings for OAuth callback
+    requirements = get_oauth_flow_requirements()
+    if not requirements["ready"]:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Google OAuth not configured"
+            detail={
+                "error": "OAuth flow not configured",
+                "message": "Missing required environment variables",
+                "missing": requirements["missing"]
+            }
         )
     
     # Find all PENDING connections and check state match
