@@ -164,6 +164,16 @@ export default function ChannelCard({ summary }: ChannelCardProps) {
     if (summary.provider === "GOOGLE_ANALYTICS") {
       const intelBaseUrl = process.env.NEXT_PUBLIC_INTEL_BASE_URL;
       
+      // Dev-only console warning
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[GA4 Connect] NEXT_PUBLIC_INTEL_BASE_URL:", intelBaseUrl ? "✅ Set" : "❌ Missing");
+        if (workspaceInfo) {
+          console.warn("[GA4 Connect] Workspace info:", { workspaceId: workspaceInfo.workspaceId, userId: workspaceInfo.userId });
+        } else {
+          console.warn("[GA4 Connect] Workspace info: ❌ Not loaded");
+        }
+      }
+      
       if (!intelBaseUrl) {
         setError("Configuratie mist");
         return;
@@ -175,7 +185,13 @@ export default function ChannelCard({ summary }: ChannelCardProps) {
       }
 
       // Redirect to FastAPI OAuth start
-      window.location.href = `${intelBaseUrl}/oauth/ga4/start?workspaceId=${workspaceInfo.workspaceId}&userId=${workspaceInfo.userId}`;
+      const oauthUrl = `${intelBaseUrl}/oauth/ga4/start?workspaceId=${workspaceInfo.workspaceId}&userId=${workspaceInfo.userId}`;
+      
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[GA4 Connect] Redirecting to:", oauthUrl);
+      }
+      
+      window.location.href = oauthUrl;
       return;
     }
 
