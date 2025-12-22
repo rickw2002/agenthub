@@ -136,6 +136,34 @@ export default function ChannelDetailContent({ channelData }: ChannelDetailConte
     }
   };
 
+  const handleSync = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/data/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ provider: channelData.provider }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "Er is iets misgegaan bij het synchroniseren");
+      }
+
+      // Refresh page to show new data
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Er is iets misgegaan");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -150,23 +178,34 @@ export default function ChannelDetailContent({ channelData }: ChannelDetailConte
           <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
         </div>
         <div className="flex flex-col items-end gap-2">
-          {isConnected ? (
-            <button
-              onClick={handleDisconnect}
-              disabled={isLoading}
-              className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Bezig..." : "Loskoppelen"}
-            </button>
-          ) : (
-            <button
-              onClick={handleConnect}
-              disabled={isLoading}
-              className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? "Bezig..." : "Verbinden"}
-            </button>
-          )}
+          <div className="flex gap-2">
+            {isConnected && (
+              <button
+                onClick={handleSync}
+                disabled={isLoading}
+                className="bg-blue-100 text-blue-700 px-4 py-2 rounded-md hover:bg-blue-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Bezig..." : "Sync nu"}
+              </button>
+            )}
+            {isConnected ? (
+              <button
+                onClick={handleDisconnect}
+                disabled={isLoading}
+                className="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Bezig..." : "Loskoppelen"}
+              </button>
+            ) : (
+              <button
+                onClick={handleConnect}
+                disabled={isLoading}
+                className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? "Bezig..." : "Verbinden"}
+              </button>
+            )}
+          </div>
           {error && (
             <p className="text-xs text-red-600">{error}</p>
           )}
