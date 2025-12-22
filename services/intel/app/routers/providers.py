@@ -1,11 +1,11 @@
 """
-Provider-specific endpoints (GA4 property selection, etc.).
+Provider-specific endpoints (GA4 property selection, provider status, etc.).
 """
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from app.config import settings
-from app.db import fetchrow, execute
+from app.db import fetchrow, fetch, fetchval, execute
 from app.crypto import decrypt_dict, encrypt_dict
 from app.middleware.auth import require_intel_key
 
@@ -155,3 +155,99 @@ async def select_ga4_property(
             detail=f"Failed to update connection: {str(e)}"
         )
 
+
+@router.get("/providers/status")
+async def get_providers_status(
+    workspaceId: str,
+    intel_auth: bool = Depends(require_intel_key),
+) -> List[Dict[str, Any]]:
+    """
+    Provider status overview for a workspace.
+
+    Returns, per provider:
+    - provider: internal provider key (e.g. GOOGLE_ANALYTICS)
+    - status: connection status from Connection.status
+    - lastSyncAt: latest Signal or MetricDaily timestamp (if available)
+    - lastSyncStatus: 'OK' | 'WARN' | 'FAIL'
+    - lastError: last error message from encrypted authJson (if present)
+    """
+    if not workspaceId:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="workspaceId is required",
+        )
+
+    # Fetch all connections for this workspace
+    connections = await fetch(
+        '''SELECT id, provider, "status", "authJson", "updatedAt"
+           FROM "Connection"
+           WHERE "workspaceId"=$1''',
+        workspaceId,
+    )
+
+    results: List[Dict[str, Any]] = []
+
+    for conn in connections:
+        provider = conn["provider"]
+        status_value = conn["status"]
+        auth_json = conn["authJson"]
+
+        # Map Connection.provider -> Signal.sourceProvider (current scope: GA4 only)
+        if provider == "GOOGLE_ANALYTICS":
+            signal_source_provider = "GA4"
+        else:
+            signal_source_provider = provider
+
+        # Determine lastSyncAt from Signals (preferred) or MetricDaily as fallback
+        last_signal_at = await fetchval(
+            '''SELECT MAX("createdAt") FROM "Signal"
+               WHERE "workspaceId"=$1 AND "sourceProvider"=$2''',
+            workspaceId,
+            signal_source_provider,
+        )
+
+        if last_signal_at is None:
+            last_metric_at = await fetchval(
+                '''SELECT MAX("updatedAt") FROM "MetricDaily"
+                   WHERE "workspaceId"=$1 AND provider=$2''',
+                workspaceId,
+                provider,
+            )
+        else:
+            last_metric_at = None
+
+        last_sync_at = last_signal_at or last_metric_at
+
+        # Infer lastSyncStatus
+        if last_sync_at and status_value == "CONNECTED":
+            last_sync_status = "OK"
+        elif status_value == "ERROR":
+            last_sync_status = "FAIL"
+        elif last_sync_at is None and status_value == "CONNECTED":
+            # Connected but never synced
+            last_sync_status = "WARN"
+        else:
+            last_sync_status = "WARN"
+
+        # Try to pull lastError from encrypted authJson (if GA4)
+        last_error: Optional[str] = None
+        if auth_json and provider == "GOOGLE_ANALYTICS":
+            try:
+                auth_data = decrypt_dict(auth_json)
+                ga4_data = auth_data.get("ga4", {})
+                last_error = ga4_data.get("error")
+            except Exception:
+                # Don't fail status endpoint on decrypt issues
+                last_error = None
+
+        results.append(
+            {
+                "provider": provider,
+                "status": status_value,
+                "lastSyncAt": last_sync_at,
+                "lastSyncStatus": last_sync_status,
+                "lastError": last_error,
+            }
+        )
+
+    return results

@@ -1,12 +1,16 @@
 """
 GA4 daily sync implementation.
+
+Extended for v2:
+- Still writes daily aggregates into MetricDaily (backwards compatibility)
+- Additionally writes provider-agnostic Signals into the Signal table.
 """
 import json
 import uuid
 import httpx
-from datetime import datetime, date, timedelta
-from typing import Dict, Any, Optional
-from app.db import fetchrow, execute, fetchval
+from datetime import datetime, timedelta
+from typing import Dict, Any
+from app.db import execute, fetchval, executemany
 from app.providers.common import load_connection_auth, save_connection_auth
 from app.providers.google_tokens import refresh_google_token_if_needed
 
@@ -14,13 +18,13 @@ from app.providers.google_tokens import refresh_google_token_if_needed
 async def sync_ga4_daily(conn_row: Dict[str, Any]) -> Dict[str, Any]:
     """
     Sync GA4 metrics for a single connection (yesterday's data).
-    
+
     Args:
         conn_row: Connection row dict with id, workspaceId, userId, provider, status, authJson
-        
+
     Returns:
-        Dict with success status and metrics count
-        
+        Dict with success status and metrics count (raw GA4 metrics)
+
     Raises:
         ValueError: If connection is invalid or sync fails
     """
@@ -142,31 +146,33 @@ async def sync_ga4_daily(conn_row: Dict[str, Any]) -> Dict[str, Any]:
                 "totalRevenue": float(metric_values[4].get("value", "0")) if len(metric_values) > 4 else 0.0
             }
         
-        # Prepare dimensions
+        # Prepare dimensions (shared between MetricDaily + Signals)
         dimensions_data = {
             "propertyId": selected_property_id,
             "source": "GA4"
         }
-        
-        # Convert to JSON strings
+
+        # ------------------------------------------------------------------
+        # Backwards-compatible write to MetricDaily (v1 Data Hub)
+        # ------------------------------------------------------------------
         metrics_json = json.dumps(metrics_data)
         dimensions_json = json.dumps(dimensions_data)
-        
+
         # Idempotent write: check if MetricDaily row exists for (workspaceId, provider, date)
         # date is stored as DateTime, so we need to match on date part only
         existing_id = await fetchval(
-            '''SELECT id FROM "MetricDaily" 
-               WHERE "workspaceId"=$1 AND provider=$2 AND DATE("date")=$3 
+            '''SELECT id FROM "MetricDaily"
+               WHERE "workspaceId"=$1 AND provider=$2 AND DATE("date")=$3
                LIMIT 1''',
             workspace_id,
             provider,
             yesterday_str
         )
-        
+
         if existing_id:
             # Update existing row
             await execute(
-                '''UPDATE "MetricDaily" 
+                '''UPDATE "MetricDaily"
                    SET "metricsJson"=$1, "dimensionsJson"=$2, "updatedAt"=NOW()
                    WHERE id=$3''',
                 metrics_json,
@@ -177,10 +183,10 @@ async def sync_ga4_daily(conn_row: Dict[str, Any]) -> Dict[str, Any]:
             # Insert new row
             # date should be DateTime at midnight UTC
             date_dt = datetime.combine(yesterday_utc, datetime.min.time())
-            
+
             # Generate ID (using uuid4)
             metric_id = str(uuid.uuid4())
-            
+
             await execute(
                 '''INSERT INTO "MetricDaily"(
                    id, "userId", "workspaceId", provider, "date", "metricsJson", "dimensionsJson", "createdAt", "updatedAt")
@@ -193,7 +199,114 @@ async def sync_ga4_daily(conn_row: Dict[str, Any]) -> Dict[str, Any]:
                 metrics_json,
                 dimensions_json
             )
-        
+
+        # ------------------------------------------------------------------
+        # v2 Signals write (TRAFFIC / ENGAGEMENT / CONVERSION minimal set)
+        # ------------------------------------------------------------------
+        try:
+            # Normalize period as [start, end) for the UTC day
+            period_start = datetime.combine(yesterday_utc, datetime.min.time())
+            period_end = period_start + timedelta(days=1)
+
+            # Remove existing Signals for this workspace/provider/day to keep it idempotent
+            await execute(
+                '''DELETE FROM "Signal"
+                   WHERE "workspaceId"=$1
+                     AND "sourceProvider"=$2
+                     AND "periodStart"=$3
+                     AND "periodEnd"=$4''',
+                workspace_id,
+                "GA4",
+                period_start,
+                period_end,
+            )
+
+            # Build minimal TRAFFIC / ENGAGEMENT / CONVERSION signals
+            signals_args = []
+
+            # TRAFFIC
+            signals_args.append((
+                str(uuid.uuid4()),
+                workspace_id,
+                "TRAFFIC",
+                "GA4",
+                period_start,
+                period_end,
+                "sessions",
+                float(metrics_data.get("sessions", 0.0)),
+                "count",
+                json.dumps(dimensions_data),
+                datetime.utcnow(),
+            ))
+            signals_args.append((
+                str(uuid.uuid4()),
+                workspace_id,
+                "TRAFFIC",
+                "GA4",
+                period_start,
+                period_end,
+                "users",
+                float(metrics_data.get("totalUsers", 0.0)),
+                "count",
+                json.dumps(dimensions_data),
+                datetime.utcnow(),
+            ))
+            signals_args.append((
+                str(uuid.uuid4()),
+                workspace_id,
+                "TRAFFIC",
+                "GA4",
+                period_start,
+                period_end,
+                "pageviews",
+                float(metrics_data.get("screenPageViews", 0.0)),
+                "count",
+                json.dumps(dimensions_data),
+                datetime.utcnow(),
+            ))
+
+            # ENGAGEMENT (simple: reuse pageviews as engagement proxy)
+            signals_args.append((
+                str(uuid.uuid4()),
+                workspace_id,
+                "ENGAGEMENT",
+                "GA4",
+                period_start,
+                period_end,
+                "pageviews",
+                float(metrics_data.get("screenPageViews", 0.0)),
+                "count",
+                json.dumps(dimensions_data),
+                datetime.utcnow(),
+            ))
+
+            # CONVERSION
+            signals_args.append((
+                str(uuid.uuid4()),
+                workspace_id,
+                "CONVERSION",
+                "GA4",
+                period_start,
+                period_end,
+                "conversions",
+                float(metrics_data.get("conversions", 0.0)),
+                "count",
+                json.dumps(dimensions_data),
+                datetime.utcnow(),
+            ))
+
+            await executemany(
+                '''INSERT INTO "Signal"(
+                       id, "workspaceId", type, "sourceProvider",
+                       "periodStart", "periodEnd",
+                       key, value, unit, dimensions, "createdAt")
+                   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)''',
+                signals_args,
+            )
+        except Exception as e:
+            # Log, but do not fail the whole sync if Signals write fails
+            print(f"⚠️  Failed to write GA4 Signals for workspace {workspace_id}: {e}")
+
         # Always update authJson (in case token was refreshed)
         # refresh_google_token_if_needed updates auth_data in-place
         encrypted_auth = save_connection_auth(auth_data)
@@ -202,7 +315,7 @@ async def sync_ga4_daily(conn_row: Dict[str, Any]) -> Dict[str, Any]:
             encrypted_auth,
             connection_id
         )
-        
+
         return {
             "success": True,
             "date": yesterday_str,

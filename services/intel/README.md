@@ -52,6 +52,10 @@ Service will be available at: http://localhost:8001
 
 **Database:**
 - `DATABASE_URL` - PostgreSQL connection string (required for OAuth and sync)
+  - Format: `postgresql://user:password@host:5432/database?sslmode=require`
+  - For Supabase: Use the "Connection string" from Supabase Dashboard → Settings → Database
+  - Must include `?sslmode=require` for Supabase/cloud Postgres
+  - Example: `postgresql://postgres.xxxxx:password@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?sslmode=require`
 
 **Encryption:**
 - `ENCRYPTION_KEY` - Base64-encoded 32-byte key for AES-256-GCM token encryption (required for OAuth)
@@ -270,9 +274,86 @@ This service is designed to be deployed on Render as a separate Python service.
 - `INTEL_API_KEY` - Same value as in Next.js env (required for protected endpoints)
 - `CRON_SECRET` - For cron endpoints (required, must match Render Cron Job secret)
 
+**For Intelligence & Weekly Reports:**
+- `OPENAI_API_KEY` - OpenAI API key (required for intelligence generation and weekly reports)
+- `OPENAI_MODEL` - Model name (optional, defaults to `gpt-4.1-mini`)
+
 **Quick Setup Checklist:**
 1. Generate `ENCRYPTION_KEY`: `openssl rand -base64 32`
 2. Set all OAuth vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` (or `GOOGLE_OAUTH_REDIRECT_URL`)
 3. Set `DATABASE_URL` (same as Next.js)
 4. Set `NEXTJS_BASE_URL`, `INTEL_API_KEY`, `CRON_SECRET`
+5. Set `OPENAI_API_KEY` (and optionally `OPENAI_MODEL`) for intelligence/weekly reports
+
+## Weekly Report Generation (Cron)
+
+### Manual Trigger
+
+Test the weekly report endpoint manually:
+
+```bash
+curl -X POST "http://localhost:8001/internal/cron/weekly-report" \
+  -H "X-Cron-Secret: dev-secret" \
+  -H "Content-Type: application/json"
+```
+
+Response:
+```json
+{
+  "status": "success",
+  "generated": 2,
+  "failed": 0,
+  "failures": [],
+  "week_start": "2025-12-15T00:00:00",
+  "week_end": "2025-12-21T23:59:59"
+}
+```
+
+### Render Cron Configuration
+
+Set up a Render Cron Job to generate weekly reports every Sunday at 18:00 Europe/Amsterdam (17:00 UTC in winter, 16:00 UTC in summer):
+
+**Cron Schedule:** `0 17 * * 0` (Sunday 17:00 UTC, adjust for DST if needed)
+
+**Command:**
+```bash
+curl -X POST "https://<intel-service-url>/internal/cron/weekly-report" \
+  -H "X-Cron-Secret: ${CRON_SECRET}" \
+  -H "Content-Type: application/json"
+```
+
+**Note:** The endpoint automatically calculates the last week (Monday 00:00 to Sunday 23:59:59) and generates reports for all active workspaces (workspaces with CONNECTED connections or Signals/InsightV2 in the last 30 days).
+
+**Environment Variables:**
+- `CRON_SECRET` - Must match the secret used in the curl command
+- `OPENAI_API_KEY` - Required for LLM-based report generation
+
+### Verify Weekly Reports
+
+Check WeeklyReportV2 rows in Postgres:
+
+```sql
+-- Check latest weekly reports
+SELECT 
+  "workspaceId",
+  "weekStart",
+  "weekEnd",
+  summary,
+  "createdAt"
+FROM "WeeklyReportV2"
+ORDER BY "weekStart" DESC, "createdAt" DESC
+LIMIT 10;
+```
+
+```sql
+-- Count reports per workspace
+SELECT 
+  "workspaceId",
+  COUNT(*) as report_count,
+  MIN("weekStart") as first_week,
+  MAX("weekStart") as last_week
+FROM "WeeklyReportV2"
+GROUP BY "workspaceId"
+ORDER BY report_count DESC;
+```
 

@@ -199,6 +199,11 @@ model Workspace {
   metricDailies  MetricDaily[]
   insights       Insight[]
   chatMessages   ChatMessage[]
+  signals        Signal[]
+  insightsV2     InsightV2[]
+  contentDraftsV2 ContentDraftV2[]
+  weeklyReportsV2 WeeklyReportV2[]
+  contentFeedbacksV2 ContentFeedbackV2[]
 
   @@index([ownerId])
   @@index([organizationId])
@@ -493,4 +498,106 @@ model Feedback {
 
   @@index([outputId])
 }
+
+// ---------------------------------------------------------------------------
+// v2 Content & Decision Engine models
+// ---------------------------------------------------------------------------
+
+model Signal {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  type           String   // 'TRAFFIC' | 'ENGAGEMENT' | 'CONVERSION' | 'COST' | 'CONTENT' | 'REVENUE'
+  sourceProvider String   // 'GA4' | 'META' | 'LINKEDIN' | 'MANUAL' | ...
+  periodStart    DateTime
+  periodEnd      DateTime
+  key            String   // e.g. 'sessions', 'spend', 'li_post_impressions'
+  value          Float
+  unit           String   // 'count' | 'eur' | 'seconds' | 'percent'
+  dimensions     Json?    // { channel, page, campaign, ... }
+  createdAt      DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, type])
+  @@index([workspaceId, sourceProvider])
+  @@index([workspaceId, periodStart, periodEnd])
+}
+
+model InsightV2 {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  periodStart   DateTime
+  periodEnd     DateTime
+  observations  Json     // list of factual notes based on signals
+  hypotheses    Json     // list of inferred reasons (labelled as hypotheses)
+  opportunities Json     // list: topic+angle+whyNow+CTA type
+  sources       Json     // signal ids and/or other refs
+  createdAt     DateTime @default(now())
+
+  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  drafts    ContentDraftV2[]
+
+  @@index([workspaceId, periodStart, periodEnd])
+}
+
+model ContentDraftV2 {
+  id               String   @id @default(cuid())
+  workspaceId      String
+  type             String   // 'LINKEDIN_POST' (extensible)
+  title            String
+  body             String
+  format           String   // 'story' | 'insight' | 'list'
+  voiceCardVersion Json     // snapshot of VoiceCard/ProfileCard at generation time
+  basedOnInsightId String?  // FK to InsightV2
+  sources          Json     // signal ids + opportunity id, etc.
+  status           String   // 'DRAFT' | 'APPROVED' | 'POSTED'
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  basedOnInsight InsightV2?     @relation(fields: [basedOnInsightId], references: [id])
+  feedbacks      ContentFeedbackV2[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, status, createdAt])
+  @@index([basedOnInsightId])
+}
+
+model WeeklyReportV2 {
+  id          String   @id @default(cuid())
+  workspaceId String
+  weekStart   DateTime
+  weekEnd     DateTime
+  summary     String   // human-readable summary
+  scoreboard  Json     // key metrics / deltas
+  insights    Json     // structured list of insight highlights
+  decisions   Json     // suggested decisions
+  risks       Json     // identified risks/noise
+  createdAt   DateTime @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, weekStart, weekEnd])
+}
+
+model ContentFeedbackV2 {
+  id             String   @id @default(cuid())
+  workspaceId    String
+  contentDraftId String
+  postedUrl      String?
+  impressions    Int?
+  clicks         Int?
+  reactions      Int?
+  comments       Int?
+  qualitativeRating String? // 'GOOD' | 'OK' | 'BAD'
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  contentDraft ContentDraftV2 @relation(fields: [contentDraftId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId])
+  @@index([contentDraftId])
+}
+
 

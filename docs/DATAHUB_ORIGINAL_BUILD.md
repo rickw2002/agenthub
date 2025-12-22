@@ -487,3 +487,6 @@ De Data Hub was oorspronkelijk gebouwd als een **eenvoudig maar effectief systee
 
 De architectuur is **flexibel** (JSON storage), **betrouwbaar** (fallbacks), en **schaalbaar** (indexed queries, scope-based isolation).
 
+
+
+

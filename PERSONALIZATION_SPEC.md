@@ -239,3 +239,6 @@ In de database worden deze objecten als geserialiseerde JSON-strings opgeslagen 
 Dit is v1 van de spec. Kleine uitbreidingen zijn toegestaan, maar de kern (Voice, Audience, Offer, Constraints, Examples) blijft stabiel.
 
 
+
+
+

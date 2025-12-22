@@ -25,3 +25,6 @@ export default async function AgentDetailPage({ params }: PageProps) {
 
 
 
+
+
+

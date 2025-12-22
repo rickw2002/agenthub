@@ -12,13 +12,12 @@ interface GA4Property {
 interface GA4PropertySelectorProps {
   workspaceId: string;
   userId: string;
-  onSelect: () => void;
+  onSelect?: () => void; // Optional - component handles refresh internally
 }
 
 export default function GA4PropertySelector({
   workspaceId,
   userId,
-  onSelect,
 }: GA4PropertySelectorProps) {
   const [properties, setProperties] = useState<GA4Property[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);

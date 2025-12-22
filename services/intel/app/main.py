@@ -5,23 +5,33 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.config import settings
-from app.routers import health, internal, oauth_ga4, intel, providers
+from app.routers import health, internal, oauth_ga4, intel, providers, intelligence
 from app.db import create_pool, close_pool
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan events: startup and shutdown."""
-    # Startup: create DB pool
-    if settings.DATABASE_URL:
+    # Startup: create DB pool (required for service operation)
+    if not settings.DATABASE_URL:
+        print("❌ DATABASE_URL not set - service cannot start")
+        raise RuntimeError("DATABASE_URL environment variable is required")
+    
+    try:
         await create_pool()
-        print("✅ Database pool created")
+    except Exception as e:
+        print(f"❌ Failed to create database pool - service cannot start")
+        print(f"   Error: {e}")
+        raise RuntimeError(f"Database connection failed: {e}") from e
     
     yield
     
     # Shutdown: close DB pool
-    await close_pool()
-    print("✅ Database pool closed")
+    try:
+        await close_pool()
+        print("✅ Database pool closed")
+    except Exception as e:
+        print(f"⚠️  Error closing database pool: {e}")
 
 
 # Create FastAPI app
@@ -55,6 +65,7 @@ app.include_router(internal.router)
 app.include_router(oauth_ga4.router)
 app.include_router(intel.router, prefix="/analyze")
 app.include_router(providers.router)
+app.include_router(intelligence.router)
 
 
 @app.get("/")

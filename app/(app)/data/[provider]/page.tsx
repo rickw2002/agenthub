@@ -17,6 +17,24 @@ function slugToProvider(slug: string): string | null {
   return null;
 }
 
+function mapMetricsToKpis(provider: string, raw: any) {
+  if (provider !== "GOOGLE_ANALYTICS") {
+    return {
+      impressions: raw.impressions || 0,
+      clicks: raw.clicks || 0,
+      conversions: raw.conversions || 0,
+      spend: raw.spend || 0,
+    };
+  }
+
+  return {
+    impressions: raw.screenPageViews || 0,
+    clicks: raw.sessions || raw.totalUsers || 0,
+    conversions: raw.conversions || 0,
+    spend: raw.totalRevenue || 0,
+  };
+}
+
 interface PageProps {
   params: {
     provider: string;
@@ -85,12 +103,7 @@ export default async function ChannelDetailPage({ params, searchParams = {} }: P
     const latestMetric = metrics[metrics.length - 1];
     try {
       const metricsData = JSON.parse(latestMetric.metricsJson);
-      kpis = {
-        impressions: metricsData.impressions || 0,
-        clicks: metricsData.clicks || 0,
-        conversions: metricsData.conversions || 0,
-        spend: metricsData.spend || 0,
-      };
+      kpis = mapMetricsToKpis(provider, metricsData);
     } catch (e) {
       // Ignore parsing errors
     }
@@ -123,12 +136,7 @@ export default async function ChannelDetailPage({ params, searchParams = {} }: P
       return {
         id: metric.id,
         date: metric.date.toISOString().split("T")[0],
-        metrics: {
-          impressions: metricsData.impressions || 0,
-          clicks: metricsData.clicks || 0,
-          conversions: metricsData.conversions || 0,
-          spend: metricsData.spend || 0,
-        },
+        metrics: mapMetricsToKpis(metric.provider, metricsData),
         dimensions: dimensionsData,
       };
     } catch (e) {
@@ -187,9 +195,6 @@ export default async function ChannelDetailPage({ params, searchParams = {} }: P
           <GA4PropertySelector
             workspaceId={workspace.id}
             userId={session.user.id}
-            onSelect={() => {
-              // Page will refresh via window.location.reload() in component
-            }}
           />
         </div>
       )}
