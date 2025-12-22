@@ -50,12 +50,7 @@ export async function POST(request: NextRequest) {
     const workspace = await getOrCreateWorkspace(user.id);
 
     // Optioneel: body kan later extra opties bevatten (nu genegeerd)
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _body = await request.json().catch(() => ({}));
-    } catch {
-      // Ignore body parse errors, not required for this endpoint
-    }
+    // Body parsing skipped for now - future enhancement
 
     // 1) Haal laatste InsightV2 op
     const latestInsight = await prisma.insightV2.findFirst({

@@ -234,7 +234,7 @@ export default function ContentStudioV2({ workspaceId, initialDrafts }: Props) {
           <div className="border rounded-lg bg-white divide-y max-h-[480px] overflow-y-auto">
             {drafts.length === 0 && (
               <div className="p-4 text-sm text-zinc-500">
-                Nog geen drafts. Klik op "Genereer 3 LinkedIn posts" om te
+                Nog geen drafts. Klik op &quot;Genereer 3 LinkedIn posts&quot; om te
                 starten.
               </div>
             )}
