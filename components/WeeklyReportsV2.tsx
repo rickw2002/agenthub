@@ -61,7 +61,7 @@ export default function WeeklyReportsV2({ workspaceId, initialReports }: Props) 
       <div>
         <h1 className="text-2xl font-semibold text-zinc-900">Weekly Reports</h1>
         <p className="text-sm text-zinc-500">
-          Overzicht van wekelijkse rapporten met insights, beslissingen en risico's.
+          Overzicht van wekelijkse rapporten met insights, beslissingen en risico&apos;s.
         </p>
       </div>
 
@@ -181,7 +181,7 @@ export default function WeeklyReportsV2({ workspaceId, initialReports }: Props) 
                 {/* Risks */}
                 {selectedReport.risks.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-medium text-zinc-700 mb-2">Risico's</h3>
+                    <h3 className="text-sm font-medium text-zinc-700 mb-2">Risico&apos;s</h3>
                     <div className="space-y-2">
                       {selectedReport.risks.map((risk, idx) => (
                         <div
