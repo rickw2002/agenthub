@@ -6,11 +6,10 @@ import { usePathname } from "next/navigation";
 import LogoutButton from "./LogoutButton";
 
 const navigationItems = [
+  { name: "Dashboard", href: "/dashboard" },
+  { name: "Agents", href: "/agents" },
+  { name: "Projects", href: "/projects" },
   { name: "Bureau-AI", href: "/bureau-ai" },
-  { name: "Data Hub", href: "/data" },
-  { name: "Library", href: "/library" },
-  { name: "Prompt Library", href: "/prompt-library" },
-  { name: "Support", href: "/support" },
   { name: "Account", href: "/account" },
 ];
 

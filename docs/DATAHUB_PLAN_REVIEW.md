@@ -360,7 +360,7 @@ const handleConnect = async (e: React.MouseEvent) => {
     - Body: `{ provider?: string }` (optional, syncs all if omitted)
     - Use `pg_advisory_lock` to prevent concurrent runs
     - Read `Connection` rows (filter by `workspaceId`, `status="CONNECTED"`)
-    - For each connection:
+    - For each connection: 
       - Decrypt tokens
       - Fetch metrics from provider API (last 7-30 days)
       - Write to `MetricDaily` (upsert by `date + provider + workspaceId`)

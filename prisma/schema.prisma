@@ -30,180 +30,82 @@ enum DocumentStatus {
 }
 
 model User {
-  id            String           @id @default(cuid())
-  email         String           @unique
-  name          String
-  passwordHash  String
-  createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  userAgents    UserAgent[]
-  connections   Connection[]
-  metricDailies MetricDaily[]
-  insights      Insight[]
-  chatMessages  ChatMessage[]
-  workspaces    Workspace[]
-  memberships   Membership[]
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  userAgents   UserAgent[]
+  workspaces   Workspace[]
+  memberships  Membership[]
 }
 
 model AgentTemplate {
-  id              String      @id @default(cuid())
-  name            String
-  slug            String      @unique
-  category        String      // bijv. "Sales", "Marketing", "Operations"
+  id               String      @id @default(cuid())
+  name             String
+  slug             String      @unique
+  category         String // bijv. "Sales", "Marketing", "Operations"
   shortDescription String
-  longDescription String
-  type            String      // "agent" of "workflow"
-  difficulty      String      // bijv. "beginner", "advanced"
-  videoUrl        String?     // optioneel
-  configSchema    String      // JSON veld met configuratie schema
-  executor        String      @default("n8n") // "n8n" of andere executor
-  n8nWorkflowId   String?     // n8n workflow ID
-  n8nWebhookPath  String?     // n8n webhook path
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  userAgents      UserAgent[]
+  longDescription  String
+  type             String // "agent" of "workflow"
+  difficulty       String // bijv. "beginner", "advanced"
+  videoUrl         String? // optioneel
+  configSchema     String // JSON veld met configuratie schema
+  executor         String      @default("n8n") // "n8n" of andere executor
+  n8nWorkflowId    String? // n8n workflow ID
+  n8nWebhookPath   String? // n8n webhook path
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  userAgents       UserAgent[]
 }
 
 model UserAgent {
-  id              String      @id @default(cuid())
+  id              String        @id @default(cuid())
   userId          String
   agentTemplateId String
-  name            String      // door de user gekozen naam
-  config          String      // JSON met ingevulde instellingen
-  status          String      // "active", "inactive", "incomplete"
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String // door de user gekozen naam
+  config          String // JSON met ingevulde instellingen
+  status          String // "active", "inactive", "incomplete"
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   agentTemplate   AgentTemplate @relation(fields: [agentTemplateId], references: [id], onDelete: Cascade)
   runLogs         RunLog[]
 }
 
 model RunLog {
-  id            String     @id @default(cuid())
-  userAgentId  String
-  status        String     // "queued" | "running" | "success" | "failed"
+  id            String    @id @default(cuid())
+  userAgentId   String
+  status        String // "queued" | "running" | "success" | "failed"
   summary       String?
   resultUrl     String?
   error         String?
-  metadata      String?    // JSON as string
-  executor      String     @default("n8n") // "n8n" of andere executor
-  externalRunId String?    // n8n execution ID of andere external ID
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  userAgent     UserAgent  @relation(fields: [userAgentId], references: [id], onDelete: Cascade)
-}
-
-// Data Hub Models
-// Note: We store enum/JSON-like values as String for broad provider compatibility
-// Provider values: GOOGLE_ADS, META_ADS, LINKEDIN, WEBSITE, EMAIL, SUPPORT
-// ConnectionStatus values: CONNECTED, PENDING, ERROR, NOT_CONNECTED
-// InsightSeverity values: INFO, WARNING, CRITICAL
-// ChatScope values: MASTER, GOOGLE_ADS, META_ADS, LINKEDIN, WEBSITE, EMAIL, SUPPORT
-// ChatRole values: USER, ASSISTANT
-
-model Connection {
-  id          String   @id @default(cuid())
-  userId      String
-  workspaceId String
-  provider    String   // GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
-  status      String   // CONNECTED | PENDING | ERROR | NOT_CONNECTED
-  authJson    String?  // JSON stored as string
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, provider])
-  @@index([userId])
-  @@index([userId, provider])
-  @@unique([workspaceId, provider])
-  @@index([workspaceId])
-  @@index([workspaceId, provider])
-}
-
-model MetricDaily {
-  id             String   @id @default(cuid())
-  userId         String
-  workspaceId    String
-  provider       String   // GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
-  date           DateTime
-  metricsJson    String   // JSON stored as string
-  dimensionsJson String?  // JSON stored as string
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace      Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([userId, provider])
-  @@index([userId, provider, date])
-  @@index([workspaceId, provider])
-  @@index([workspaceId, provider, date])
-}
-
-model Insight {
-  id          String   @id @default(cuid())
-  userId      String
-  workspaceId String
-  provider    String?  // GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT | null for master
-  title       String
-  summary     String
-  severity    String   // INFO | WARNING | CRITICAL
-  period      String?
-  dataRefJson String?  // JSON stored as string
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, provider])
-  @@index([workspaceId])
-  @@index([workspaceId, provider])
-}
-
-model ChatMessage {
-  id          String   @id @default(cuid())
-  userId      String
-  workspaceId String
-  scope       String   // MASTER | GOOGLE_ADS | GOOGLE_ANALYTICS | META_ADS | LINKEDIN | WEBSITE | EMAIL | SUPPORT
-  role        String   // USER | ASSISTANT
-  content     String
-  createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, scope])
-  @@index([workspaceId])
-  @@index([workspaceId, scope])
+  metadata      String? // JSON as string
+  executor      String    @default("n8n") // "n8n" of andere executor
+  externalRunId String? // n8n execution ID of andere external ID
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  userAgent     UserAgent @relation(fields: [userAgentId], references: [id], onDelete: Cascade)
 }
 
 model Workspace {
   id             String            @id @default(cuid())
   name           String
-  ownerId       String
+  ownerId        String
   organizationId String?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  owner         User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  organization  Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  context       WorkspaceContext?
-  documents     Document[]
-  chunks        DocumentChunk[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  owner          User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  context        WorkspaceContext?
+  documents      Document[]
+  chunks         DocumentChunk[]
   profileAnswers ProfileAnswer[]
   profileStates  ProfileState[]
   profileCards   ProfileCard[]
   examples       Example[]
   outputs        Output[]
-  connections    Connection[]
-  metricDailies  MetricDaily[]
-  insights       Insight[]
-  chatMessages   ChatMessage[]
-  signals        Signal[]
-  insightsV2     InsightV2[]
-  contentDraftsV2 ContentDraftV2[]
-  weeklyReportsV2 WeeklyReportV2[]
-  contentFeedbacksV2 ContentFeedbackV2[]
 
   @@index([ownerId])
   @@index([organizationId])
@@ -212,28 +114,28 @@ model Workspace {
 model WorkspaceContext {
   id              String    @id @default(cuid())
   workspaceId     String    @unique
-  profileJson     String    // JSON stored as string
-  goalsJson       String    // JSON stored as string
-  preferencesJson String    // JSON stored as string
+  profileJson     String // JSON stored as string
+  goalsJson       String // JSON stored as string
+  preferencesJson String // JSON stored as string
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 }
 
 model Document {
-  id             String        @id @default(cuid())
+  id             String          @id @default(cuid())
   workspaceId    String
   organizationId String?
-  scope          DocumentScope @default(PROJECT)
+  scope          DocumentScope   @default(PROJECT)
   projectId      String?
   title          String
   fileUrl        String
-  status         DocumentStatus @default(uploaded)
+  status         DocumentStatus  @default(uploaded)
   error          String?
-  createdAt      DateTime      @default(now())
-  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  workspace      Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project        Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
   chunks         DocumentChunk[]
 
   @@index([workspaceId])
@@ -251,59 +153,58 @@ model DocumentChunk {
   projectId      String?
   chunkIndex     Int
   text           String
-  embedding      String?      // placeholder voor pgvector embedding
+  embedding      String? // placeholder voor pgvector embedding
   createdAt      DateTime      @default(now())
   document       Document      @relation(fields: [documentId], references: [id], onDelete: Cascade)
   workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   project        Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
+  @@unique([documentId, chunkIndex])
   @@index([workspaceId])
   @@index([documentId])
   @@index([organizationId])
   @@index([projectId])
   @@index([scope])
-  @@unique([documentId, chunkIndex])
 }
 
 model Organization {
-  id          String       @id @default(cuid())
-  name        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   memberships Membership[]
   workspaces  Workspace[]
   projects    Project[]
   documents   Document[]
   chunks      DocumentChunk[]
-  prompts     Prompt[]
 }
 
 model Membership {
-  id             String        @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   userId         String
-  role           OrgRole       @default(OWNER)
-  createdAt      DateTime      @default(now())
+  role           OrgRole  @default(OWNER)
+  createdAt      DateTime @default(now())
 
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
   @@index([userId])
 }
 
 model Project {
-  id             String        @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   name           String
   description    String?
-  isArchived     Boolean       @default(false)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  isArchived     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   settings       ProjectSettings?
   chats          ProjectChat[]
   documents      Document[]
@@ -324,7 +225,7 @@ model ProjectSettings {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model ProjectChat {
@@ -334,8 +235,8 @@ model ProjectChat {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  messages  ProjectChatMessage[]
+  project  Project              @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages ProjectChatMessage[]
 
   @@index([projectId])
 }
@@ -349,23 +250,9 @@ model ProjectChatMessage {
   metaJson      String?
   createdAt     DateTime @default(now())
 
-  chat          ProjectChat @relation(fields: [projectChatId], references: [id], onDelete: Cascade)
+  chat ProjectChat @relation(fields: [projectChatId], references: [id], onDelete: Cascade)
 
   @@index([projectChatId])
-}
-
-model Prompt {
-  id             String   @id @default(cuid())
-  organizationId String
-  title          String
-  body           String
-  tags           String   // Comma-separated tags
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@index([organizationId])
 }
 
 enum ExampleKind {
@@ -404,15 +291,15 @@ model ProfileAnswer {
 }
 
 model ProfileState {
-  id               String   @id @default(cuid())
-  workspaceId      String
-  projectId        String?
-  knownKeys        Json?
-  missingKeys      Json?
-  confidenceScore  Float    @default(0)
-  lastQuestionKey  String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  workspaceId     String
+  projectId       String?
+  knownKeys       Json?
+  missingKeys     Json?
+  confidenceScore Float    @default(0)
+  lastQuestionKey String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -423,16 +310,16 @@ model ProfileState {
 }
 
 model ProfileCard {
-  id            String   @id @default(cuid())
-  workspaceId   String
-  projectId     String?
-  version       Int
-  voiceCard     Json
-  audienceCard  Json
-  offerCard     Json
-  constraints   Json
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(cuid())
+  workspaceId  String
+  projectId    String?
+  version      Int
+  voiceCard    Json
+  audienceCard Json
+  offerCard    Json
+  constraints  Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -443,13 +330,13 @@ model ProfileCard {
 }
 
 model Example {
-  id          String     @id @default(cuid())
+  id          String      @id @default(cuid())
   workspaceId String
   projectId   String?
   kind        ExampleKind
   content     String
   notes       String?
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime    @default(now())
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
@@ -478,8 +365,8 @@ model Output {
   failReason         String?
   createdAt          DateTime      @default(now())
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  project   Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  workspace Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
   feedbacks Feedback[]
 
   @@index([workspaceId])
@@ -498,106 +385,3 @@ model Feedback {
 
   @@index([outputId])
 }
-
-// ---------------------------------------------------------------------------
-// v2 Content & Decision Engine models
-// ---------------------------------------------------------------------------
-
-model Signal {
-  id             String   @id @default(cuid())
-  workspaceId    String
-  type           String   // 'TRAFFIC' | 'ENGAGEMENT' | 'CONVERSION' | 'COST' | 'CONTENT' | 'REVENUE'
-  sourceProvider String   // 'GA4' | 'META' | 'LINKEDIN' | 'MANUAL' | ...
-  periodStart    DateTime
-  periodEnd      DateTime
-  key            String   // e.g. 'sessions', 'spend', 'li_post_impressions'
-  value          Float
-  unit           String   // 'count' | 'eur' | 'seconds' | 'percent'
-  dimensions     Json?    // { channel, page, campaign, ... }
-  createdAt      DateTime @default(now())
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId, type])
-  @@index([workspaceId, sourceProvider])
-  @@index([workspaceId, periodStart, periodEnd])
-}
-
-model InsightV2 {
-  id            String   @id @default(cuid())
-  workspaceId   String
-  periodStart   DateTime
-  periodEnd     DateTime
-  observations  Json     // list of factual notes based on signals
-  hypotheses    Json     // list of inferred reasons (labelled as hypotheses)
-  opportunities Json     // list: topic+angle+whyNow+CTA type
-  sources       Json     // signal ids and/or other refs
-  createdAt     DateTime @default(now())
-
-  workspace Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  drafts    ContentDraftV2[]
-
-  @@index([workspaceId, periodStart, periodEnd])
-}
-
-model ContentDraftV2 {
-  id               String   @id @default(cuid())
-  workspaceId      String
-  type             String   // 'LINKEDIN_POST' (extensible)
-  title            String
-  body             String
-  format           String   // 'story' | 'insight' | 'list'
-  voiceCardVersion Json     // snapshot of VoiceCard/ProfileCard at generation time
-  basedOnInsightId String?  // FK to InsightV2
-  sources          Json     // signal ids + opportunity id, etc.
-  status           String   // 'DRAFT' | 'APPROVED' | 'POSTED'
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-
-  workspace     Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  basedOnInsight InsightV2?     @relation(fields: [basedOnInsightId], references: [id])
-  feedbacks      ContentFeedbackV2[]
-
-  @@index([workspaceId])
-  @@index([workspaceId, status, createdAt])
-  @@index([basedOnInsightId])
-}
-
-model WeeklyReportV2 {
-  id          String   @id @default(cuid())
-  workspaceId String
-  weekStart   DateTime
-  weekEnd     DateTime
-  summary     String   // human-readable summary
-  scoreboard  Json     // key metrics / deltas
-  insights    Json     // structured list of insight highlights
-  decisions   Json     // suggested decisions
-  risks       Json     // identified risks/noise
-  createdAt   DateTime @default(now())
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId, weekStart, weekEnd])
-}
-
-model ContentFeedbackV2 {
-  id             String   @id @default(cuid())
-  workspaceId    String
-  contentDraftId String
-  postedUrl      String?
-  impressions    Int?
-  clicks         Int?
-  reactions      Int?
-  comments       Int?
-  qualitativeRating String? // 'GOOD' | 'OK' | 'BAD'
-  notes          String?
-  createdAt      DateTime @default(now())
-
-  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  contentDraft ContentDraftV2 @relation(fields: [contentDraftId], references: [id], onDelete: Cascade)
-
-  @@index([workspaceId])
-  @@index([contentDraftId])
-}
-
-

@@ -1188,3 +1188,5 @@ Het platform is gebouwd met moderne technologieën (Next.js 14, FastAPI, Prisma,
 
 Het systeem is production-ready voor de core features en heeft een solide basis voor toekomstige uitbreidingen.
 
+
+

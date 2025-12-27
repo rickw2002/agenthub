@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { Tabs } from "@/components/ui/Tabs";
 import { Button } from "@/components/ui/Button";
@@ -355,7 +355,7 @@ export default function BureauAIPage() {
   };
 
   // Fetch outputs for Content Bank
-  const fetchOutputs = useCallback(async () => {
+  const fetchOutputs = async () => {
     setContentBankLoading(true);
     setContentBankError(null);
 
@@ -385,14 +385,14 @@ export default function BureauAIPage() {
     } finally {
       setContentBankLoading(false);
     }
-  }, [contentBankFilter, activeChannel, contentBankSearch, contentBankPostType, contentBankFunnelPhase]);
+  };
 
   // Fetch outputs when Content Bank mode is active or filter changes
   useEffect(() => {
     if (activeMode === "content-bank") {
       fetchOutputs();
     }
-  }, [activeMode, contentBankFilter, contentBankPostType, contentBankFunnelPhase, fetchOutputs]);
+  }, [activeMode, contentBankFilter, contentBankPostType, contentBankFunnelPhase]);
 
   // Debounced search
   useEffect(() => {
@@ -403,7 +403,7 @@ export default function BureauAIPage() {
 
       return () => clearTimeout(timer);
     }
-  }, [contentBankSearch, activeMode, fetchOutputs]);
+  }, [contentBankSearch, activeMode]);
 
   const handleToggleFavorite = async (outputId: string) => {
     try {

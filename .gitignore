@@ -44,20 +44,6 @@ next-env.d.ts
 *.backup
 *.bak
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-
-# Temporary files
-Checking
-Cloning
-Downloaded
-Downloading
-Running
-
 
 
 
